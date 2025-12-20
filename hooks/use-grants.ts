@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase'
 type GrantInsert = Record<string, unknown>
 type GrantUpdate = Record<string, unknown>
 
-const supabase = createClient()
+function getSupabase() { return createClient() }
 
 // Fetch all grants with optional filters
 export function useGrants(filters?: {
@@ -19,7 +19,7 @@ export function useGrants(filters?: {
   return useQuery({
     queryKey: ['grants', filters],
     queryFn: async () => {
-      let query = supabase
+      let query = getSupabase()
         .from('grants')
         .select(`
           *,
@@ -53,7 +53,7 @@ export function useGrant(id: string) {
   return useQuery({
     queryKey: ['grants', id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('grants')
         .select(`
           *,
@@ -78,7 +78,7 @@ export function useCreateGrant() {
 
   return useMutation({
     mutationFn: async (grant: GrantInsert) => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('grants')
         .insert(grant)
         .select()
@@ -99,7 +99,7 @@ export function useUpdateGrant() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: GrantUpdate & { id: string }) => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('grants')
         .update(updates)
         .eq('id', id)
@@ -122,7 +122,7 @@ export function useUpdateGrantStage() {
 
   return useMutation({
     mutationFn: async ({ id, stage }: { id: string; stage: string }) => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('grants')
         .update({ stage })
         .eq('id', id)
@@ -145,7 +145,7 @@ export function useDeleteGrant() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('grants').delete().eq('id', id)
+      const { error } = await getSupabase().from('grants').delete().eq('id', id)
 
       if (error) throw error
     },
@@ -160,7 +160,7 @@ export function useGrantPipeline() {
   return useQuery({
     queryKey: ['grants', 'pipeline'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('grants')
         .select(`
           *,
@@ -199,7 +199,7 @@ export function useGrantDeadlines(daysAhead = 30) {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + daysAhead)
 
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('grants')
         .select(`
           id,
@@ -223,7 +223,7 @@ export function useGrantMilestones(grantId: string) {
   return useQuery({
     queryKey: ['grants', grantId, 'milestones'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('grant_milestones')
         .select('*')
         .eq('grant_id', grantId)
@@ -242,7 +242,7 @@ export function useUpdateMilestone() {
 
   return useMutation({
     mutationFn: async ({ id, grantId, status }: { id: string; grantId: string; status: string }) => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('grant_milestones')
         .update({ status })
         .eq('id', id)
@@ -263,7 +263,7 @@ export function useGrantStats() {
   return useQuery({
     queryKey: ['grants', 'stats'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('grants')
         .select('stage, amount_requested, amount_awarded, probability')
 

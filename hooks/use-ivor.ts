@@ -6,7 +6,10 @@ import { createClient } from '@/lib/supabase-browser'
 import { checkIvorHealth, sendIvorMessage, searchIvorResources } from '@/lib/ivor'
 import type { IvorMessage, IvorChatRequest, IvorHealthStatus, IvorSearchRequest, IvorStats } from '@/types/ivor'
 
-const supabase = createClient()
+// Lazy-load supabase client to avoid build-time errors
+function getSupabase() {
+  return createClient()
+}
 
 // IVOR health status hook
 export function useIvorHealth() {
@@ -98,7 +101,7 @@ export function useIvorChat() {
 // Log IVOR interaction to CRM database
 async function logIvorInteraction(contactId: string, query: string, response: string) {
   try {
-    await supabase.from('activities').insert({
+    await getSupabase().from('activities').insert({
       contact_id: contactId,
       activity_type: 'ivor_interaction',
       subject: 'IVOR Conversation',
@@ -111,7 +114,7 @@ async function logIvorInteraction(contactId: string, query: string, response: st
     })
 
     // Update contact's IVOR interaction count
-    await supabase.rpc('increment_ivor_interactions', {
+    await getSupabase().rpc('increment_ivor_interactions', {
       p_contact_id: contactId,
     })
   } catch (error) {
@@ -132,7 +135,7 @@ export function useIvorStats() {
     queryKey: ['ivor', 'stats'],
     queryFn: async () => {
       // Get IVOR interaction stats from CRM database
-      const { data: activities, error } = await supabase
+      const { data: activities, error } = await getSupabase()
         .from('activities')
         .select('*')
         .eq('activity_type', 'ivor_interaction')
@@ -234,7 +237,7 @@ export function useRecentIvorInteractions(limit = 10) {
   return useQuery({
     queryKey: ['ivor', 'interactions', limit],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('activities')
         .select(`
           *,

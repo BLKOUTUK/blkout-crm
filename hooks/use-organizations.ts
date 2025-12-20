@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase'
 type OrganizationInsert = Record<string, unknown>
 type OrganizationUpdate = Record<string, unknown>
 
-const supabase = createClient()
+function getSupabase() { return createClient() }
 
 // Fetch all organizations
 export function useOrganizations(filters?: {
@@ -19,7 +19,7 @@ export function useOrganizations(filters?: {
   return useQuery({
     queryKey: ['organizations', filters],
     queryFn: async () => {
-      let query = supabase
+      let query = getSupabase()
         .from('organizations')
         .select(`
           *,
@@ -53,7 +53,7 @@ export function useOrganization(id: string) {
   return useQuery({
     queryKey: ['organizations', id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('organizations')
         .select(`
           *,
@@ -77,7 +77,7 @@ export function useCreateOrganization() {
 
   return useMutation({
     mutationFn: async (org: OrganizationInsert) => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('organizations')
         .insert(org)
         .select()
@@ -98,7 +98,7 @@ export function useUpdateOrganization() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: OrganizationUpdate & { id: string }) => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('organizations')
         .update(updates)
         .eq('id', id)
@@ -121,7 +121,7 @@ export function useDeleteOrganization() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('organizations').delete().eq('id', id)
+      const { error } = await getSupabase().from('organizations').delete().eq('id', id)
 
       if (error) throw error
     },
@@ -136,7 +136,7 @@ export function useOrganizationStats() {
   return useQuery({
     queryKey: ['organizations', 'stats'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('organizations')
         .select('org_type, relationship_status')
 

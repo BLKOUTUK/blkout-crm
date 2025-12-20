@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase'
 type ContactInsert = Record<string, unknown>
 type ContactUpdate = Record<string, unknown>
 
-const supabase = createClient()
+function getSupabase() { return createClient() }
 
 // Fetch all contacts
 export function useContacts(filters?: {
@@ -18,7 +18,7 @@ export function useContacts(filters?: {
   return useQuery({
     queryKey: ['contacts', filters],
     queryFn: async () => {
-      let query = supabase
+      let query = getSupabase()
         .from('contacts')
         .select(`
           *,
@@ -49,7 +49,7 @@ export function useContact(id: string) {
   return useQuery({
     queryKey: ['contacts', id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('contacts')
         .select(`
           *,
@@ -71,7 +71,7 @@ export function useCreateContact() {
 
   return useMutation({
     mutationFn: async (contact: ContactInsert) => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('contacts')
         .insert(contact)
         .select()
@@ -92,7 +92,7 @@ export function useUpdateContact() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: ContactUpdate & { id: string }) => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('contacts')
         .update(updates)
         .eq('id', id)
@@ -115,7 +115,7 @@ export function useDeleteContact() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('contacts').delete().eq('id', id)
+      const { error } = await getSupabase().from('contacts').delete().eq('id', id)
 
       if (error) throw error
     },
@@ -130,7 +130,7 @@ export function useSearchContacts(searchTerm: string) {
   return useQuery({
     queryKey: ['contacts', 'search', searchTerm],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('search_contacts', {
+      const { data, error } = await getSupabase().rpc('search_contacts', {
         search_term: searchTerm,
       })
 

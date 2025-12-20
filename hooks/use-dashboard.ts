@@ -4,14 +4,14 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase-browser'
 import type { DashboardMetrics, GrantPipelineStats, UpcomingDeadline } from '@/types/database'
 
-const supabase = createClient()
+function getSupabase() { return createClient() }
 
 // Dashboard metrics
 export function useDashboardMetrics() {
   return useQuery({
     queryKey: ['dashboard', 'metrics'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_dashboard_metrics')
+      const { data, error } = await getSupabase().rpc('get_dashboard_metrics')
 
       if (error) throw error
       return data as DashboardMetrics
@@ -24,7 +24,7 @@ export function useGrantPipelineStats() {
   return useQuery({
     queryKey: ['grants', 'stats'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_grant_pipeline_stats')
+      const { data, error } = await getSupabase().rpc('get_grant_pipeline_stats')
 
       if (error) throw error
       return data as GrantPipelineStats
@@ -37,7 +37,7 @@ export function useUpcomingDeadlines(daysAhead = 30) {
   return useQuery({
     queryKey: ['dashboard', 'deadlines', daysAhead],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_upcoming_deadlines', {
+      const { data, error } = await getSupabase().rpc('get_upcoming_deadlines', {
         days_ahead: daysAhead,
       })
 
@@ -52,7 +52,7 @@ export function useRecentActivities(limit = 10) {
   return useQuery({
     queryKey: ['activities', 'recent', limit],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('activities')
         .select(`
           *,
@@ -73,7 +73,7 @@ export function usePendingTasks() {
   return useQuery({
     queryKey: ['tasks', 'pending'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('tasks')
         .select(`
           *,
