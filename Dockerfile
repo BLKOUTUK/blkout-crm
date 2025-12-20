@@ -7,10 +7,10 @@ WORKDIR /app
 
 # Copy package files explicitly
 COPY package.json ./
-COPY package-lock.json ./
 
-# Install dependencies
-RUN npm install --legacy-peer-deps
+# Force cache bust and install dependencies
+ARG CACHEBUST=1
+RUN npm install --legacy-peer-deps --no-package-lock
 
 # Builder stage
 FROM node:20-alpine AS builder
