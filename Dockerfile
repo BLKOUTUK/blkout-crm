@@ -5,11 +5,12 @@ FROM node:20-alpine AS deps
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files explicitly
+COPY package.json ./
+COPY package-lock.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies (use npm install as fallback)
+RUN npm ci || npm install --legacy-peer-deps
 
 # Builder stage
 FROM node:20-alpine AS builder
