@@ -1,12 +1,22 @@
+/**
+ * CRM - Tailwind Configuration
+ * Uses BLKOUT Liberation Design System with shadcn/ui compatibility
+ */
+
 import type { Config } from 'tailwindcss'
 
 const config: Config = {
+  presets: [require('../../packages/shared/design-system/tailwind.preset')],
+
   darkMode: ['class'],
+
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
+    '../../packages/shared/design-system/components/**/*.{js,ts,jsx,tsx}',
   ],
+
   theme: {
     container: {
       center: true,
@@ -16,17 +26,8 @@ const config: Config = {
       },
     },
     extend: {
+      // shadcn/ui CSS variables (compatible with design system)
       colors: {
-        // BLKOUT Brand Colors
-        blkout: {
-          red: '#D4261A',      // Revolutionary - CTAs, urgent
-          orange: '#E76F51',   // Warm - energy, celebrations
-          teal: '#2A9D8F',     // Liberation - success, growth
-          gold: '#F4A261',     // Community - warmth, highlights
-          forest: '#264653',   // Deep - text, grounding
-          black: '#0A0A0A',
-          cream: '#F5F0E6',
-        },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -40,69 +41,6 @@ const config: Config = {
           DEFAULT: 'hsl(var(--secondary))',
           foreground: 'hsl(var(--secondary-foreground))',
         },
-        destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))',
-        },
-        muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))',
-        },
-        accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))',
-        },
-        popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))',
-        },
-        card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
-        },
-      },
-      borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
-      },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Poppins', 'Inter', 'sans-serif'],
-      },
-      keyframes: {
-        'accordion-down': {
-          from: { height: '0' },
-          to: { height: 'var(--radix-accordion-content-height)' },
-        },
-        'accordion-up': {
-          from: { height: 'var(--radix-accordion-content-height)' },
-          to: { height: '0' },
-        },
-        'fade-in-up': {
-          from: { opacity: '0', transform: 'translateY(20px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
-        },
-        'count-up': {
-          from: { opacity: '0', transform: 'translateY(10px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
-        },
-        'shimmer': {
-          '0%': { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition: '200% 0' },
-        },
-        'pulse-dot': {
-          '0%, 100%': { opacity: '1' },
-          '50%': { opacity: '0.5' },
-        },
-      },
-      animation: {
-        'accordion-down': 'accordion-down 0.2s ease-out',
-        'accordion-up': 'accordion-up 0.2s ease-out',
-        'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
-        'count-up': 'count-up 0.3s ease-out forwards',
-        'shimmer': 'shimmer 2s infinite linear',
-        'pulse-dot': 'pulse-dot 2s infinite ease-in-out',
       },
     },
   },
