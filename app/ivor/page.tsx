@@ -27,7 +27,7 @@ export default function IvorInsightsPage() {
             </div>
             <div>
               <h1 className="font-display text-3xl font-bold text-blkout-forest">
-                IVOR Insights
+                AIvor Insights
               </h1>
               <p className="text-muted-foreground">
                 AI-powered community support and resource discovery
@@ -47,7 +47,7 @@ export default function IvorInsightsPage() {
               className="flex items-center gap-2"
             >
               <ExternalLink className="h-4 w-4" />
-              Open IVOR
+              Open AIvor
             </a>
           </Button>
         </div>
@@ -83,11 +83,11 @@ export default function IvorInsightsPage() {
           </div>
           <div className="flex-1">
             <h3 className="font-medium text-blkout-forest mb-1">
-              About IVOR
+              About AIvor
             </h3>
             <p className="text-sm text-muted-foreground mb-3">
-              IVOR (Intelligent Virtual Outreach Resource) is an AI assistant designed specifically
-              for the Black queer community in the UK. IVOR provides culturally affirming support,
+              AIvor (Intelligent Virtual Outreach Resource) is an AI assistant designed specifically
+              for the Black queer community in the UK. AIvor provides culturally affirming support,
               connects community members with resources, and offers immediate crisis assistance.
             </p>
             <div className="flex flex-wrap gap-2">

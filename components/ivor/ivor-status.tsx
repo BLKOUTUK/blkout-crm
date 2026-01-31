@@ -44,7 +44,7 @@ export function IvorStatus({ className }: { className?: string }) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Bot className="h-5 w-5 text-blkout-teal" />
-            IVOR AI Status
+            AIvor Status
           </CardTitle>
           <Button
             variant="ghost"
@@ -71,7 +71,7 @@ export function IvorStatus({ className }: { className?: string }) {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-blkout-forest">
-                    {health?.name || 'IVOR Core'}
+                    {health?.name || 'AIvor Core'}
                   </span>
                   <Badge variant={config.badgeVariant}>
                     {config.label}

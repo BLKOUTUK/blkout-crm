@@ -30,7 +30,7 @@ export function IvorStats({ className }: IvorStatsProps) {
     return (
       <Card className={cn(className)}>
         <CardContent className="p-6 text-center text-muted-foreground">
-          Failed to load IVOR statistics
+          Failed to load AIvor statistics
         </CardContent>
       </Card>
     )
@@ -42,7 +42,7 @@ export function IvorStats({ className }: IvorStatsProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <BarChart3 className="h-5 w-5 text-blkout-teal" />
-            IVOR Analytics
+            AIvor Analytics
           </CardTitle>
           <DataSourceBadge source={stats ? 'live' : 'mock'} />
         </div>
@@ -129,7 +129,7 @@ export function IvorStats({ className }: IvorStatsProps) {
             {(!stats?.topTopics || stats.topTopics.length === 0) &&
              stats?.totalQueries === 0 && (
               <div className="text-center py-4 text-muted-foreground text-sm">
-                No IVOR interactions recorded yet.
+                No AIvor interactions recorded yet.
                 <br />
                 Start chatting to see analytics.
               </div>

@@ -69,7 +69,7 @@ const navigation = [
     icon: Calendar,
   },
   {
-    name: 'IVOR Insights',
+    name: 'AIvor Insights',
     href: '/ivor',
     icon: Bot,
   },

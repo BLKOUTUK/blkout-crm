@@ -99,7 +99,7 @@ export function IvorRecent({ className }: IvorRecentProps) {
         ) : (
           <div className="text-center py-8 text-muted-foreground text-sm">
             <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-20" />
-            No IVOR conversations yet.
+            No AIvor conversations yet.
             <br />
             Start chatting to see activity here.
           </div>

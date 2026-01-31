@@ -49,7 +49,7 @@ export function IvorChat({ className, contactId }: IvorChatProps) {
               <Bot className="h-5 w-5 text-blkout-teal" />
               <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-green-500 rounded-full" />
             </div>
-            Chat with IVOR
+            Chat with AIvor
           </CardTitle>
           {messages.length > 0 && (
             <Button variant="ghost" size="sm" onClick={clearChat}>
@@ -66,7 +66,7 @@ export function IvorChat({ className, contactId }: IvorChatProps) {
               <Bot className="h-8 w-8 text-blkout-teal" />
             </div>
             <h3 className="font-medium text-blkout-forest mb-2">
-              Hello, I'm IVOR
+              Hello, I'm AIvor
             </h3>
             <p className="text-sm text-muted-foreground max-w-xs">
               Your AI assistant for community support, resources, and information.
@@ -94,7 +94,7 @@ export function IvorChat({ className, contactId }: IvorChatProps) {
             {isLoading && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">IVOR is thinking...</span>
+                <span className="text-sm">AIvor is thinking...</span>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -108,7 +108,7 @@ export function IvorChat({ className, contactId }: IvorChatProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask IVOR anything..."
+            placeholder="Ask AIvor anything..."
             disabled={isLoading}
             className="flex-1"
           />
