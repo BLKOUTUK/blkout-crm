@@ -1,26 +1,34 @@
 import type { Metadata } from 'next'
-import { Inter, Poppins } from 'next/font/google'
+import { Work_Sans, Fraunces, IBM_Plex_Mono } from 'next/font/google'
 import './globals.css'
 import { Sidebar } from '@/components/sidebar'
 import { Header } from '@/components/header'
 import { Toaster } from '@/components/ui/toaster'
 import { QueryProvider } from '@/components/query-provider'
 
-const inter = Inter({
+const workSans = Work_Sans({
   subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap'
+  variable: '--font-work-sans',
+  weight: ['400', '500', '700', '900'],
+  display: 'swap',
 })
-const poppins = Poppins({
+const fraunces = Fraunces({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-poppins',
-  display: 'swap'
+  variable: '--font-fraunces',
+  weight: ['300', '400', '500'],
+  style: ['italic', 'normal'],
+  display: 'swap',
+})
+const plexMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  weight: ['400', '500'],
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
   title: 'BLKOUT CRM',
-  description: 'Community Relationship Management for BLKOUT UK',
+  description: 'Relationship memory for the cooperative — obsidian + gold + cream',
 }
 
 export default function RootLayout({
@@ -29,14 +37,16 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} ${poppins.variable}`}>
+    <html lang="en" className={`${workSans.variable} ${fraunces.variable} ${plexMono.variable}`}>
+      <body className="min-h-screen antialiased" style={{ fontFamily: 'var(--font-work-sans), system-ui, sans-serif' }}>
+        {/* 4px gold rule across the very top — the BLKOUT thread */}
+        <div className="h-1 w-full bg-[#d4af37]" />
         <QueryProvider>
-          <div className="flex h-screen overflow-hidden">
+          <div className="flex h-[calc(100vh-4px)] overflow-hidden">
             <Sidebar />
             <div className="flex flex-1 flex-col overflow-hidden">
               <Header />
-              <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
+              <main className="flex-1 overflow-y-auto bg-background p-8 md:p-12">
                 {children}
               </main>
             </div>

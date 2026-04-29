@@ -1,358 +1,160 @@
-'use client'
-
-import { useState } from 'react'
+import { createAdminClient } from '@/lib/supabase'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Plus,
-  Search,
-  Filter,
-  MoreHorizontal,
-  Mail,
-  Phone,
-  Building2,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react'
-import { cn, getInitials, statusColors, orgTypeLabels } from '@/lib/utils'
 
-// Mock data for demonstration
-const mockContacts = [
-  {
-    id: '1',
-    first_name: 'Jane',
-    last_name: 'Smith',
-    email: 'jane.smith@dhsc.gov.uk',
-    phone: '+44 20 7xxx xxxx',
-    contact_type: ['government_official', 'partner_contact'],
-    status: 'active',
-    engagement_level: 'high',
-    organization: { name: 'DHSC', org_type: 'government_public_sector' },
-    job_title: 'Policy Lead',
-    influence_level: 'decision_maker',
-  },
-  {
-    id: '2',
-    first_name: 'Tom',
-    last_name: 'Brown',
-    email: 't.brown@comicrelief.com',
-    phone: '+44 20 7xxx xxxx',
-    contact_type: ['funder_contact'],
-    status: 'active',
-    engagement_level: 'high',
-    organization: { name: 'Comic Relief', org_type: 'funder_foundation' },
-    job_title: 'Grant Manager',
-    influence_level: 'decision_maker',
-  },
-  {
-    id: '3',
-    first_name: 'Sarah',
-    last_name: 'Chen',
-    email: 's.chen@stonewall.org',
-    phone: '+44 20 7xxx xxxx',
-    contact_type: ['partner_contact'],
-    status: 'active',
-    engagement_level: 'champion',
-    organization: { name: 'Stonewall', org_type: 'policy_advocacy' },
-    job_title: 'Director of Campaigns',
-    influence_level: 'influencer',
-  },
-  {
-    id: '4',
-    first_name: 'Marcus',
-    last_name: 'Johnson',
-    email: 'marcus.j@email.com',
-    phone: '+44 77xx xxx xxx',
-    contact_type: ['community_member'],
-    status: 'active',
-    engagement_level: 'champion',
-    organization: null,
-    job_title: null,
-    influence_level: 'champion',
-  },
-  {
-    id: '5',
-    first_name: 'David',
-    last_name: 'Okonkwo',
-    email: 'david@blkout.uk',
-    phone: '+44 77xx xxx xxx',
-    contact_type: ['cbs_member'],
-    status: 'active',
-    engagement_level: 'champion',
-    organization: { name: 'BLKOUT', org_type: 'grassroots_community' },
-    job_title: 'Director',
-    influence_level: 'decision_maker',
-  },
-]
+// Server-side contacts list with topic mix per contact (top-engagement first).
+// Search via ?q= URL param — keeps everything stateless and shareable.
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
-const contactTypeLabels: Record<string, string> = {
-  cbs_member: 'CBS Member',
-  community_member: 'Community',
-  partner_contact: 'Partner',
-  funder_contact: 'Funder',
-  government_official: 'Government',
-  volunteer: 'Volunteer',
-  event_participant: 'Event',
-  subscriber: 'Subscriber',
-  ally: 'Ally',
-  media_contact: 'Media',
+const TOPIC_LABELS: Record<string, string> = {
+  funding: 'funding',
+  partnership: 'partnership',
+  events: 'events',
+  governance: 'governance',
+  community: 'community',
+  media: 'media',
+  research: 'research',
+  advocacy: 'advocacy',
+  professional_development: 'pro-dev',
+  marketing: 'marketing',
+  personal: 'personal',
 }
 
-const engagementColors: Record<string, string> = {
-  champion: 'bg-green-100 text-green-800',
-  high: 'bg-blue-100 text-blue-800',
-  medium: 'bg-yellow-100 text-yellow-800',
-  low: 'bg-gray-100 text-gray-800',
-  new: 'bg-purple-100 text-purple-800',
-  dormant: 'bg-red-100 text-red-800',
-}
+async function loadContacts(query?: string) {
+  const sb = createAdminClient()
+  let builder = sb
+    .from('contacts')
+    .select('id, first_name, last_name, email, contact_type, organization_id, organizations(name)')
+    .order('last_name', { ascending: true })
+    .limit(500)
+  if (query) {
+    const q = query.toLowerCase()
+    builder = builder.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`)
+  }
+  const { data: contacts, error } = await builder
+  if (error) throw new Error(error.message)
 
-export default function ContactsPage() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [typeFilter, setTypeFilter] = useState<string | null>(null)
+  // For each contact, sum activities + top topic.
+  const ids = (contacts || []).map((c: any) => c.id).filter(Boolean)
+  let activityMap: Record<string, { total: number; topics: Record<string, number> }> = {}
+  if (ids.length) {
+    const { data: acts } = await sb
+      .from('activities')
+      .select('contact_id, metadata')
+      .in('activity_type', ['email_sent', 'email_received'])
+      .in('contact_id', ids)
+    for (const row of acts || []) {
+      const cid = (row as any).contact_id as string
+      const topic = (row as any).metadata?.topic
+      if (!cid) continue
+      if (!activityMap[cid]) activityMap[cid] = { total: 0, topics: {} }
+      activityMap[cid].total++
+      if (topic) activityMap[cid].topics[topic] = (activityMap[cid].topics[topic] || 0) + 1
+    }
+  }
 
-  // Filter contacts based on search and type
-  const filteredContacts = mockContacts.filter((contact) => {
-    const matchesSearch =
-      searchQuery === '' ||
-      `${contact.first_name} ${contact.last_name}`
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      contact.email.toLowerCase().includes(searchQuery.toLowerCase())
-
-    const matchesType =
-      !typeFilter || contact.contact_type.includes(typeFilter)
-
-    return matchesSearch && matchesType
+  const enriched = (contacts || []).map((c: any) => {
+    const stats = activityMap[c.id] || { total: 0, topics: {} }
+    const topTopics = Object.entries(stats.topics)
+      .sort((a, b) => (b[1] as number) - (a[1] as number))
+      .slice(0, 3)
+      .map(([topic, n]) => ({ topic, n: n as number }))
+    return { ...c, threads: stats.total, topTopics }
   })
 
+  // Sort by thread count, descending
+  enriched.sort((a, b) => b.threads - a.threads)
+  return enriched
+}
+
+function TopicChip({ topic, n }: { topic: string; n: number }) {
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-bold">Contacts</h1>
-          <p className="text-muted-foreground">
-            Manage your stakeholder relationships
-          </p>
-        </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Contact
-        </Button>
-      </div>
+    <span className="border border-[#d4af37]/40 px-1.5 py-0.5 font-meta text-[10px] text-[#d4af37]">
+      {TOPIC_LABELS[topic] || topic} <span className="text-[#a8a195]">{n}</span>
+    </span>
+  )
+}
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search contacts..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  <Filter className="mr-2 h-4 w-4" />
-                  Type
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setTypeFilter(null)}>
-                  All Types
-                </DropdownMenuItem>
-                {Object.entries(contactTypeLabels).map(([value, label]) => (
-                  <DropdownMenuItem key={value} onClick={() => setTypeFilter(value)}>
-                    {label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  <Filter className="mr-2 h-4 w-4" />
-                  Status
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem>All Statuses</DropdownMenuItem>
-                <DropdownMenuItem>Active</DropdownMenuItem>
-                <DropdownMenuItem>Inactive</DropdownMenuItem>
-                <DropdownMenuItem>Prospect</DropdownMenuItem>
-                <DropdownMenuItem>Archived</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </CardContent>
-      </Card>
+export default async function ContactsPage({ searchParams }: { searchParams: { q?: string } }) {
+  const query = searchParams?.q
+  const contacts = await loadContacts(query)
+  const withActivity = contacts.filter((c: any) => c.threads > 0).length
 
-      {/* Contacts Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="p-4 text-left text-sm font-medium">Name</th>
-                  <th className="p-4 text-left text-sm font-medium">Type</th>
-                  <th className="p-4 text-left text-sm font-medium">
-                    Organization
-                  </th>
-                  <th className="p-4 text-left text-sm font-medium">
-                    Engagement
-                  </th>
-                  <th className="p-4 text-left text-sm font-medium">Status</th>
-                  <th className="p-4 text-right text-sm font-medium">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredContacts.map((contact) => (
-                  <tr
-                    key={contact.id}
-                    className="border-b transition-colors hover:bg-muted/50"
-                  >
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                          {getInitials(contact.first_name, contact.last_name)}
-                        </div>
-                        <div>
-                          <Link
-                            href={`/contacts/${contact.id}`}
-                            className="font-medium hover:underline"
-                          >
-                            {contact.first_name} {contact.last_name}
-                          </Link>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Mail className="h-3 w-3" />
-                            {contact.email}
-                          </div>
-                        </div>
+  return (
+    <div className="mx-auto max-w-6xl space-y-10">
+      {/* Hero */}
+      <header className="border-b border-[#d4af37]/30 pb-8">
+        <div className="font-meta text-[#a8a195]">Contacts · {contacts.length.toLocaleString()} loaded · {withActivity.toLocaleString()} with email activity</div>
+        <h1 className="mt-4 font-display text-4xl text-[#f5f1e8]">
+          People &amp; correspondents
+        </h1>
+        <p className="mt-3 max-w-xl font-tender text-[#a8a195]">
+          Sorted by thread count. Topic chips show what each relationship is mostly about.
+        </p>
+      </header>
+
+      {/* Search */}
+      <form className="flex gap-3">
+        <input
+          type="search"
+          name="q"
+          defaultValue={query || ''}
+          placeholder="Search name or email…"
+          className="flex-1 border-2 border-[#d4af37]/30 bg-[#14141f] px-4 py-3 text-[#f5f1e8] placeholder:text-[#a8a195] focus:border-[#d4af37] focus:outline-none"
+        />
+        <button
+          type="submit"
+          className="border-2 border-[#d4af37] bg-transparent px-6 py-3 font-meta text-[#d4af37] hover:bg-[#d4af37] hover:text-[#0a0a14]"
+        >
+          Search
+        </button>
+        {query && (
+          <Link
+            href="/contacts"
+            className="border-2 border-[#a8a195]/30 px-6 py-3 font-meta text-[#a8a195] hover:border-[#a8a195]"
+          >
+            Clear
+          </Link>
+        )}
+      </form>
+
+      {/* Results */}
+      <section>
+        {contacts.length === 0 ? (
+          <p className="font-tender text-[#a8a195]">No contacts match. Try a different search.</p>
+        ) : (
+          <ol className="divide-y divide-[#14141f]">
+            {contacts.map((c: any) => {
+              const name = `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email || '(unknown)'
+              const orgName = c.organizations?.name
+              return (
+                <li key={c.id} className="grid grid-cols-[1fr_auto] items-baseline gap-6 py-4">
+                  <div className="min-w-0">
+                    <Link href={`/contacts/${c.id}`} className="block">
+                      <div className="text-lg text-[#f5f1e8] hover:text-[#d4af37]">{name}</div>
+                      <div className="mt-1 truncate font-tender text-sm text-[#a8a195]">
+                        {c.email}
+                        {orgName && <span className="ml-2 text-[#d4af37]">· {orgName}</span>}
                       </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex flex-wrap gap-1">
-                        {contact.contact_type.slice(0, 2).map((type) => (
-                          <Badge
-                            key={type}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {contactTypeLabels[type] || type}
-                          </Badge>
+                    </Link>
+                    {c.topTopics.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {c.topTopics.map((t: any) => (
+                          <TopicChip key={t.topic} topic={t.topic} n={t.n} />
                         ))}
-                        {contact.contact_type.length > 2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{contact.contact_type.length - 2}
-                          </Badge>
-                        )}
                       </div>
-                    </td>
-                    <td className="p-4">
-                      {contact.organization ? (
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">
-                              {contact.organization.name}
-                            </p>
-                            {contact.job_title && (
-                              <p className="text-xs text-muted-foreground">
-                                {contact.job_title}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      {contact.engagement_level && (
-                        <Badge
-                          className={cn(
-                            'text-xs',
-                            engagementColors[contact.engagement_level]
-                          )}
-                        >
-                          {contact.engagement_level}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <Badge
-                        className={cn(
-                          'text-xs',
-                          statusColors[contact.status]
-                        )}
-                      >
-                        {contact.status}
-                      </Badge>
-                    </td>
-                    <td className="p-4 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/contacts/${contact.id}`}>
-                              View Details
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
-                          <DropdownMenuItem>Add Note</DropdownMenuItem>
-                          <DropdownMenuItem>Create Task</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            Archive
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          <div className="flex items-center justify-between border-t p-4">
-            <p className="text-sm text-muted-foreground">
-              Showing 1-{filteredContacts.length} of {filteredContacts.length}{' '}
-              contacts
-            </p>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled>
-                <ChevronLeft className="mr-1 h-4 w-4" />
-                Previous
-              </Button>
-              <Button variant="outline" size="sm" disabled>
-                Next
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <div className="font-display text-3xl text-[#f5f1e8]">{c.threads}</div>
+                    <div className="font-meta text-[#a8a195]">threads</div>
+                  </div>
+                </li>
+              )
+            })}
+          </ol>
+        )}
+      </section>
     </div>
   )
 }

@@ -2,28 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
+/* BLKOUT One Platform Design — core palette
+   Obsidian + gold-rich + cream. Section accent: core (gold).
+   See /home/robbe/blkout-platform/DESIGN.md */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 43 50% 53%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 43 50% 53%;
-    --radius: 0.5rem;
+    /* Token bridge: shadcn HSL tokens mapped to BLKOUT obsidian theme.
+       Background = obsidian #0a0a14, foreground = cream #f5f1e8. */
+    --background: 240 22% 6%;          /* #0a0a14 */
+    --foreground: 39 33% 93%;          /* #f5f1e8 */
+    --card: 240 19% 10%;               /* #14141f abyss */
+    --card-foreground: 39 33% 93%;
+    --popover: 240 19% 10%;
+    --popover-foreground: 39 33% 93%;
+    --primary: 43 65% 52%;             /* #d4af37 gold-rich */
+    --primary-foreground: 240 22% 6%;
+    --secondary: 240 19% 14%;
+    --secondary-foreground: 39 33% 93%;
+    --muted: 240 14% 18%;
+    --muted-foreground: 39 8% 62%;     /* #a8a195 cream-muted */
+    --accent: 43 65% 52%;
+    --accent-foreground: 240 22% 6%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 39 33% 93%;
+    --border: 240 12% 22%;
+    --input: 240 14% 18%;
+    --ring: 43 65% 52%;
+    --radius: 0;                       /* sharp edges */
   }
 
   .dark {
@@ -55,7 +61,53 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "ss02";
   }
+  ::selection {
+    background: #d4af37;
+    color: #0a0a14;
+  }
+  /* BLKOUT typography roles. Components opt into these. */
+  .font-display {
+    font-family: var(--font-work-sans), 'Work Sans', system-ui, sans-serif;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    line-height: 0.9;
+  }
+  .font-tender {
+    font-family: var(--font-fraunces), 'Fraunces', Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+  }
+  .font-meta {
+    font-family: var(--font-mono), 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.6875rem;            /* 11px */
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  /* Em-dash hand-set for em-dash bullets in copy */
+  .em-dash::before {
+    content: "— ";
+    color: #d4af37;
+    margin-right: 0.25rem;
+  }
+
+  /* Bridge — sidebar/header components ship with light-theme classes; force obsidian palette
+     until they're refactored. Targeted overrides only. */
+  aside.bg-white,
+  header.bg-white,
+  nav.bg-white,
+  div.bg-white {
+    background-color: #14141f !important;
+    color: #f5f1e8 !important;
+    border-color: #d4af37 !important;
+  }
+  .bg-gray-50, .bg-gray-100 { background-color: #14141f !important; }
+  .bg-gray-200 { background-color: #1a1a26 !important; }
+  .text-gray-500, .text-gray-600, .text-gray-700 { color: #a8a195 !important; }
+  .text-gray-800, .text-gray-900 { color: #f5f1e8 !important; }
+  .border-gray-200, .border-gray-300 { border-color: #2a2a36 !important; }
 }
 
 /* Custom scrollbar */

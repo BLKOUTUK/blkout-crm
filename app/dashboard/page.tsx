@@ -1,183 +1,193 @@
-'use client'
+import { createAdminClient } from '@/lib/supabase'
+import Link from 'next/link'
 
-import { Button } from '@/components/ui/button'
-import {
-  Users,
-  Building2,
-  Wallet,
-  TrendingUp,
-  Calendar,
-} from 'lucide-react'
-import { NewsletterSignup } from '@/components/newsletter-signup'
-import {
-  MetricCard,
-  GrantPipelineChart,
-  PartnerDonutChart,
-  ActivityTimeline,
-  DeadlineCalendar,
-  TaskList,
-  QuickActions,
-  DataSourceBadge,
-} from '@/components/dashboard'
+// BLKOUT CRM — relationship overview.
+// Server component; reads directly from Supabase via the admin client.
+// Service-role key is needed at runtime, not build, so force dynamic.
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
-// Mock data - will be replaced with real data from hooks
-const mockMetrics = {
-  communityMembers: { value: 847, change: '12% this month', trend: [720, 745, 768, 790, 812, 830, 847] },
-  partnerOrgs: { value: 45, change: '3 new this quarter', trend: [38, 40, 41, 42, 43, 44, 45] },
-  fundsSecured: { value: 125450, change: '25% vs last year', trend: [95000, 102000, 108000, 115000, 120000, 123000, 125450] },
-  activeGrants: { value: 7, change: '2 decisions pending', trend: [5, 5, 6, 6, 6, 7, 7] },
+const TOPIC_LABELS: Record<string, string> = {
+  funding: 'Funding',
+  partnership: 'Partnership',
+  events: 'Events',
+  governance: 'Governance',
+  community: 'Community',
+  media: 'Media',
+  research: 'Research',
+  advocacy: 'Advocacy',
+  professional_development: 'Pro-dev',
+  marketing: 'Marketing',
+  personal: 'Personal',
 }
 
-const mockGrantPipeline = {
-  stages: [
-    { name: 'Research', count: 4, value: 60000 },
-    { name: 'Preparing', count: 2, value: 45000 },
-    { name: 'Submitted', count: 3, value: 85000 },
-    { name: 'Review', count: 2, value: 55000 },
-    { name: 'Active', count: 7, value: 50000 },
-  ],
-  pipelineValue: 295000,
-  weightedValue: 127000,
+const TOPIC_ORDER = [
+  'funding', 'partnership', 'events', 'governance', 'community',
+  'media', 'research', 'advocacy', 'professional_development', 'marketing', 'personal',
+]
+
+async function loadOverview() {
+  const sb = createAdminClient()
+
+  const [contactsCount, orgsCount, activitiesCount, last30, topicAggRaw, topPeopleRaw] = await Promise.all([
+    sb.from('contacts').select('id', { count: 'exact', head: true }),
+    sb.from('organizations').select('id', { count: 'exact', head: true }),
+    sb.from('activities').select('id', { count: 'exact', head: true }).in('activity_type', ['email_sent', 'email_received']),
+    sb.from('activities').select('id', { count: 'exact', head: true })
+      .in('activity_type', ['email_sent', 'email_received'])
+      .gte('occurred_at', new Date(Date.now() - 30 * 86400000).toISOString()),
+    // Topic aggregation — pull metadata.topic for all email activities. Fast enough.
+    sb.from('activities').select('metadata').in('activity_type', ['email_sent', 'email_received']).limit(15000),
+    // Top correspondents — group activities by contact_id
+    sb.from('activities').select('contact_id').in('activity_type', ['email_sent', 'email_received']).limit(15000),
+  ])
+
+  const topicCounts: Record<string, number> = {}
+  let directionInbound = 0
+  let directionOutbound = 0
+  for (const row of topicAggRaw.data || []) {
+    const t = (row as any).metadata?.topic
+    if (t) topicCounts[t] = (topicCounts[t] || 0) + 1
+    const d = (row as any).metadata?.direction
+    if (d === 'inbound') directionInbound++
+    else if (d === 'outbound') directionOutbound++
+  }
+
+  const peopleCounts: Record<string, number> = {}
+  for (const row of topPeopleRaw.data || []) {
+    const cid = (row as any).contact_id
+    if (cid) peopleCounts[cid] = (peopleCounts[cid] || 0) + 1
+  }
+  const topContactIds = Object.entries(peopleCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+  const topPeopleDetails = topContactIds.length
+    ? await sb.from('contacts').select('id, first_name, last_name, email, organization_id').in('id', topContactIds.map(([id]) => id))
+    : { data: [] }
+  const topPeople = topContactIds.map(([id, count]) => {
+    const c = (topPeopleDetails.data || []).find((p: any) => p.id === id)
+    return { id, count, name: c ? `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email : 'Unknown', email: c?.email }
+  })
+
+  return {
+    contacts: contactsCount.count || 0,
+    orgs: orgsCount.count || 0,
+    threads: activitiesCount.count || 0,
+    last30: last30.count || 0,
+    topicCounts,
+    directionInbound,
+    directionOutbound,
+    topPeople,
+  }
 }
 
-const mockPartnerTypes = [
-  { name: 'Grassroots', count: 12, color: '#2A9D8F' },
-  { name: 'Policy/Advocacy', count: 8, color: '#8B5CF6' },
-  { name: 'Government', count: 6, color: '#3B82F6' },
-  { name: 'International', count: 4, color: '#6366F1' },
-  { name: 'Healthcare', count: 10, color: '#EF4444' },
-  { name: 'Funders', count: 5, color: '#F4A261' },
-]
+function MetaLabel({ children }: { children: React.ReactNode }) {
+  return <span className="font-meta text-[#a8a195]">{children}</span>
+}
 
-const mockDeadlines = [
-  { id: '1', title: 'Arts Council Application', date: 'Jan 15', daysLeft: 26, type: 'grant' as const },
-  { id: '2', title: 'Tudor Trust Application', date: 'Feb 28', daysLeft: 70, type: 'grant' as const },
-  { id: '3', title: 'Comic Relief Q4 Report', date: 'Jan 10', daysLeft: 21, type: 'report' as const },
-  { id: '4', title: 'THT MoU Renewal', date: 'Feb 1', daysLeft: 43, type: 'renewal' as const },
-]
+function StatBlock({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+  return (
+    <div className="border-l-2 border-[#d4af37] pl-4">
+      <div className="font-meta text-[#a8a195]">{label}</div>
+      <div className="mt-1 font-display text-4xl text-[#f5f1e8]">{value}</div>
+      {sub && <div className="mt-1 font-tender text-sm text-[#a8a195]">{sub}</div>}
+    </div>
+  )
+}
 
-const mockActivities = [
-  { id: '1', type: 'meeting' as const, title: 'Met with DHSC re: HIV Action Plan', time: '2 hours ago' },
-  { id: '2', type: 'grant' as const, title: 'Grant approved: Comic Relief £10,000', time: 'Yesterday' },
-  { id: '3', type: 'partner' as const, title: 'New partner: London Friend added', time: '2 days ago' },
-  { id: '4', type: 'policy' as const, title: 'Policy submission: Health Disparities', time: '3 days ago' },
-]
-
-const mockTasks = [
-  { id: '1', title: 'Follow up with Jane Smith (DHSC)', due: 'Today', priority: 'urgent' as const },
-  { id: '2', title: 'Submit Arts Council application', due: 'Jan 15', priority: 'high' as const },
-  { id: '3', title: 'Review THT partnership renewal', due: 'Jan 20', priority: 'medium' as const },
-  { id: '4', title: 'Prepare Q4 report for Comic Relief', due: 'Jan 10', priority: 'high' as const },
-]
-
-export default function DashboardPage() {
-  // Data source is mock for now - will connect to real hooks
-  const dataSource = 'mock' as const
+export default async function DashboardPage() {
+  const data = await loadOverview()
+  const totalTopics = Object.values(data.topicCounts).reduce((a, b) => a + b, 0)
+  const sortedTopics = TOPIC_ORDER
+    .map((id) => ({ id, count: data.topicCounts[id] || 0 }))
+    .filter((t) => t.count > 0)
+    .sort((a, b) => b.count - a.count)
+  const directionTotal = data.directionInbound + data.directionOutbound
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="font-display text-3xl font-bold text-blkout-forest">
-            Dashboard
-          </h1>
-          <DataSourceBadge source={dataSource} />
-        </div>
-        <Button variant="outline">
-          <Calendar className="mr-2 h-4 w-4" />
-          Date Range
-        </Button>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-12">
+      {/* Hero */}
+      <header className="border-b border-[#d4af37]/30 pb-8">
+        <MetaLabel>BLKOUT CRM — relationship corpus</MetaLabel>
+        <h1 className="mt-4 font-display text-5xl text-[#f5f1e8] md:text-6xl">
+          Who BLKOUT<br />
+          is in conversation with
+        </h1>
+        <p className="mt-6 max-w-xl font-tender text-lg text-[#a8a195]">
+          Twelve years of correspondence, classified and indexed. The cooperative&rsquo;s relational memory — searchable, attributable, ours.
+        </p>
+      </header>
 
-      {/* Hero Metrics - 4 cols */}
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          title="Community Members"
-          value={mockMetrics.communityMembers.value}
-          change={`↑ ${mockMetrics.communityMembers.change}`}
-          changeType="positive"
-          icon={Users}
-          href="/contacts?type=community_member"
-          accentColor="teal"
-          sparklineData={mockMetrics.communityMembers.trend}
-          dataSource={dataSource}
-        />
-        <MetricCard
-          title="Partner Organizations"
-          value={mockMetrics.partnerOrgs.value}
-          change={`↑ ${mockMetrics.partnerOrgs.change}`}
-          changeType="positive"
-          icon={Building2}
-          href="/organizations"
-          accentColor="gold"
-          sparklineData={mockMetrics.partnerOrgs.trend}
-          dataSource={dataSource}
-        />
-        <MetricCard
-          title="Funds Secured"
-          value={mockMetrics.fundsSecured.value}
-          change={`↑ ${mockMetrics.fundsSecured.change}`}
-          changeType="positive"
-          icon={Wallet}
-          href="/grants"
-          accentColor="orange"
-          isCurrency
-          sparklineData={mockMetrics.fundsSecured.trend}
-          dataSource={dataSource}
-        />
-        <MetricCard
-          title="Active Grants"
-          value={mockMetrics.activeGrants.value}
-          change={mockMetrics.activeGrants.change}
-          changeType="neutral"
-          icon={TrendingUp}
-          href="/grants?stage=active"
-          accentColor="forest"
-          sparklineData={mockMetrics.activeGrants.trend}
-          dataSource={dataSource}
-        />
+      {/* Stat row */}
+      <section className="grid grid-cols-2 gap-8 md:grid-cols-4">
+        <StatBlock label="Contacts" value={data.contacts.toLocaleString()} />
+        <StatBlock label="Organisations" value={data.orgs.toLocaleString()} />
+        <StatBlock label="Email threads" value={data.threads.toLocaleString()} sub="across sent + inbox important" />
+        <StatBlock label="Last 30 days" value={data.last30.toLocaleString()} />
       </section>
 
-      {/* Main Content Grid - 3 cols */}
-      <section className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-          <GrantPipelineChart
-            stages={mockGrantPipeline.stages}
-            pipelineValue={mockGrantPipeline.pipelineValue}
-            weightedValue={mockGrantPipeline.weightedValue}
-            dataSource={dataSource}
-          />
-          <TaskList
-            tasks={mockTasks}
-            pendingCount={4}
-            overdueCount={2}
-            dataSource={dataSource}
-          />
+      {/* Direction split */}
+      <section>
+        <MetaLabel>Direction · who initiates</MetaLabel>
+        <div className="mt-4 flex h-3 w-full overflow-hidden">
+          <div className="bg-[#d4af37]" style={{ width: `${(data.directionOutbound / directionTotal) * 100}%` }} />
+          <div className="bg-[#9b4dca]" style={{ width: `${(data.directionInbound / directionTotal) * 100}%` }} />
         </div>
-        <div className="space-y-6">
-          <DeadlineCalendar
-            deadlines={mockDeadlines}
-            dataSource={dataSource}
-          />
-          <PartnerDonutChart
-            types={mockPartnerTypes}
-            dataSource={dataSource}
-          />
+        <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-sm">
+          <span className="text-[#f5f1e8]"><span className="mr-2 inline-block h-2 w-2 bg-[#d4af37]" />→ outbound · {data.directionOutbound.toLocaleString()} ({((data.directionOutbound / directionTotal) * 100).toFixed(0)}%)</span>
+          <span className="text-[#f5f1e8]"><span className="mr-2 inline-block h-2 w-2 bg-[#9b4dca]" />← inbound · {data.directionInbound.toLocaleString()} ({((data.directionInbound / directionTotal) * 100).toFixed(0)}%)</span>
         </div>
       </section>
 
-      {/* Secondary Grid - 2 cols */}
-      <section className="grid gap-6 md:grid-cols-2">
-        <ActivityTimeline
-          activities={mockActivities}
-          dataSource={dataSource}
-        />
-        <div className="space-y-6">
-          <QuickActions />
-          <NewsletterSignup />
+      {/* Topic distribution */}
+      <section>
+        <div className="flex items-baseline justify-between">
+          <h2 className="font-display text-2xl text-[#f5f1e8]">Topic mix</h2>
+          <MetaLabel>{totalTopics.toLocaleString()} classified threads</MetaLabel>
+        </div>
+        <div className="mt-6 space-y-3">
+          {sortedTopics.map(({ id, count }) => {
+            const pct = (count / totalTopics) * 100
+            return (
+              <div key={id} className="grid grid-cols-[8rem_1fr_5rem] items-center gap-4">
+                <div className="font-meta text-[#a8a195]">{TOPIC_LABELS[id] || id}</div>
+                <div className="h-2 bg-[#14141f]">
+                  <div className="h-full bg-[#d4af37]" style={{ width: `${pct}%` }} />
+                </div>
+                <div className="text-right text-sm text-[#f5f1e8]">
+                  {count.toLocaleString()} <span className="text-[#a8a195]">·  {pct.toFixed(1)}%</span>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </section>
+
+      {/* Top correspondents */}
+      <section>
+        <div className="flex items-baseline justify-between">
+          <h2 className="font-display text-2xl text-[#f5f1e8]">Top correspondents</h2>
+          <MetaLabel>by thread count</MetaLabel>
+        </div>
+        <ol className="mt-6 space-y-3">
+          {data.topPeople.map((p, i) => (
+            <li key={p.id} className="grid grid-cols-[2rem_1fr_5rem] items-baseline gap-4 border-b border-[#14141f] pb-3">
+              <span className="font-meta text-[#a8a195]">{String(i + 1).padStart(2, '0')}</span>
+              <Link href={`/contacts/${p.id}`} className="text-[#f5f1e8] hover:text-[#d4af37]">
+                {p.name}
+                {p.email && p.email !== p.name && (
+                  <span className="ml-2 font-tender text-sm text-[#a8a195]">— {p.email}</span>
+                )}
+              </Link>
+              <span className="text-right text-sm text-[#f5f1e8]">{p.count}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <footer className="pt-8 font-tender text-sm text-[#a8a195]">
+        Generated server-side from Supabase. Reflects v6 of the relationship corpus — including topic classifications via Llama 3.3 (29 Apr 2026).
+      </footer>
     </div>
   )
 }

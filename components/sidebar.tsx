@@ -8,183 +8,74 @@ import {
   Users,
   Building2,
   Wallet,
+  PoundSterling,
   FileText,
   Calendar,
   Bot,
   CheckSquare,
+  ClipboardList,
   Settings,
-  ChevronDown,
 } from 'lucide-react'
-import { useState } from 'react'
 
 const navigation = [
-  {
-    name: 'Dashboard',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    name: 'Contacts',
-    href: '/contacts',
-    icon: Users,
-    children: [
-      { name: 'All Contacts', href: '/contacts' },
-      { name: 'CBS Members', href: '/contacts?type=cbs_member' },
-      { name: 'Community', href: '/contacts?type=community_member' },
-      { name: 'Import', href: '/contacts/import' },
-    ],
-  },
-  {
-    name: 'Organizations',
-    href: '/organizations',
-    icon: Building2,
-    children: [
-      { name: 'All Organizations', href: '/organizations' },
-      { name: 'By Sector', href: '/organizations/sectors' },
-      { name: 'Funders', href: '/organizations?type=funder_foundation' },
-    ],
-  },
-  {
-    name: 'Funding',
-    href: '/grants',
-    icon: Wallet,
-    children: [
-      { name: 'Pipeline', href: '/grants' },
-      { name: 'Donations', href: '/grants/donations' },
-      { name: 'Reports', href: '/grants/reports' },
-    ],
-  },
-  {
-    name: 'Policy',
-    href: '/policy',
-    icon: FileText,
-    children: [
-      { name: 'Engagements', href: '/policy' },
-      { name: 'Submissions', href: '/policy/submissions' },
-    ],
-  },
-  {
-    name: 'Events',
-    href: '/events',
-    icon: Calendar,
-  },
-  {
-    name: 'AIvor Insights',
-    href: '/ivor',
-    icon: Bot,
-  },
-  {
-    name: 'Tasks',
-    href: '/tasks',
-    icon: CheckSquare,
-  },
-  {
-    name: 'Settings',
-    href: '/settings',
-    icon: Settings,
-  },
+  { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Contacts', href: '/contacts', icon: Users },
+  { name: 'Organisations', href: '/organizations', icon: Building2 },
+  { name: 'Funding', href: '/grants', icon: Wallet },
+  { name: 'Policy', href: '/policy', icon: FileText },
+  { name: 'Financial', href: '/financial', icon: PoundSterling },
+  { name: 'Evidence', href: '/evidence', icon: ClipboardList },
+  { name: 'Events', href: '/events', icon: Calendar },
+  { name: 'AIvor', href: '/ivor', icon: Bot },
+  { name: 'Tasks', href: '/tasks', icon: CheckSquare },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
-  const [expandedItems, setExpandedItems] = useState<string[]>([])
-
-  const toggleExpanded = (name: string) => {
-    setExpandedItems((prev) =>
-      prev.includes(name)
-        ? prev.filter((item) => item !== name)
-        : [...prev, name]
-    )
-  }
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-white">
-      {/* Logo */}
-      <div className="flex h-16 items-center border-b px-6">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="text-2xl">🏴</span>
-          <span className="font-display text-xl font-bold text-blkout-black">
-            BLKOUT CRM
-          </span>
+    <aside className="flex h-full w-64 flex-col border-r border-[#d4af37]/30 bg-[#0a0a14]">
+      {/* Wordmark */}
+      <div className="border-b border-[#d4af37]/30 px-6 py-6">
+        <Link href="/dashboard" className="block">
+          <div className="font-meta text-[#d4af37]">BLKOUT</div>
+          <div className="mt-1 font-display text-2xl text-[#f5f1e8]">CRM</div>
+          <div className="mt-1 font-tender text-xs text-[#a8a195]">relational memory</div>
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-4">
-        <ul className="space-y-1">
+      <nav className="flex-1 overflow-y-auto px-3 py-6">
+        <ul className="space-y-0">
           {navigation.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-            const isExpanded = expandedItems.includes(item.name)
-            const hasChildren = item.children && item.children.length > 0
-
             return (
               <li key={item.name}>
-                <div className="flex flex-col">
-                  <button
-                    onClick={() => hasChildren && toggleExpanded(item.name)}
-                    className={cn(
-                      'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                      isActive
-                        ? 'bg-blkout-gold/10 text-blkout-gold'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    )}
-                  >
-                    <Link
-                      href={item.href}
-                      className="flex items-center gap-3"
-                      onClick={(e) => hasChildren && e.preventDefault()}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {item.name}
-                    </Link>
-                    {hasChildren && (
-                      <ChevronDown
-                        className={cn(
-                          'h-4 w-4 transition-transform',
-                          isExpanded && 'rotate-180'
-                        )}
-                      />
-                    )}
-                  </button>
-
-                  {hasChildren && isExpanded && (
-                    <ul className="ml-8 mt-1 space-y-1">
-                      {item.children.map((child) => (
-                        <li key={child.name}>
-                          <Link
-                            href={child.href}
-                            className={cn(
-                              'block rounded-lg px-3 py-2 text-sm transition-colors',
-                              pathname === child.href
-                                ? 'bg-blkout-gold/10 text-blkout-gold'
-                                : 'text-gray-600 hover:bg-gray-100'
-                            )}
-                          >
-                            {child.name}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    'group flex items-center gap-3 border-l-2 px-4 py-2.5 text-sm transition-colors',
+                    isActive
+                      ? 'border-[#d4af37] bg-[#14141f] text-[#d4af37]'
+                      : 'border-transparent text-[#a8a195] hover:border-[#d4af37]/40 hover:text-[#f5f1e8]'
                   )}
-                </div>
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span className={isActive ? 'font-meta' : ''}>{item.name}</span>
+                </Link>
               </li>
             )
           })}
         </ul>
       </nav>
 
-      {/* User */}
-      <div className="border-t p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blkout-gold text-white">
-            RB
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <p className="truncate text-sm font-medium">Robert Berkeley</p>
-            <p className="truncate text-xs text-gray-500">rob@blkoutuk.com</p>
-          </div>
-        </div>
+      {/* Footer signature */}
+      <div className="border-t border-[#d4af37]/30 px-6 py-5">
+        <div className="font-meta text-[10px] text-[#a8a195]">Cooperatively held</div>
+        <div className="mt-1 font-tender text-sm text-[#f5f1e8]">Rob Berkeley</div>
+        <div className="font-tender text-xs text-[#a8a195]">rob@blkoutuk.com</div>
       </div>
-    </div>
+    </aside>
   )
 }
