@@ -35,7 +35,7 @@ async function loadContacts(query?: string) {
   if (error) throw new Error(error.message)
 
   // Pull org names separately — implicit join had multiple-FK ambiguity
-  const orgIds = [...new Set((contacts || []).map((c: any) => c.organization_id).filter(Boolean))]
+  const orgIds = Array.from(new Set((contacts || []).map((c: any) => c.organization_id).filter(Boolean)))
   let orgNameMap: Record<string, string> = {}
   if (orgIds.length) {
     const { data: orgs } = await sb.from('organizations').select('id, name').in('id', orgIds)
