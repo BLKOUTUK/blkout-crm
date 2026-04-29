@@ -24,7 +24,7 @@ async function loadContacts(query?: string) {
   const sb = createAdminClient()
   let builder = sb
     .from('contacts')
-    .select('id, first_name, last_name, email, contact_type, organization_id, organizations(name)')
+    .select('id, first_name, last_name, email, contact_type, organization_id')
     .order('last_name', { ascending: true })
     .limit(500)
   if (query) {
@@ -33,6 +33,17 @@ async function loadContacts(query?: string) {
   }
   const { data: contacts, error } = await builder
   if (error) throw new Error(error.message)
+
+  // Pull org names separately — implicit join had multiple-FK ambiguity
+  const orgIds = [...new Set((contacts || []).map((c: any) => c.organization_id).filter(Boolean))]
+  let orgNameMap: Record<string, string> = {}
+  if (orgIds.length) {
+    const { data: orgs } = await sb.from('organizations').select('id, name').in('id', orgIds)
+    for (const o of orgs || []) orgNameMap[(o as any).id] = (o as any).name
+  }
+  for (const c of contacts || []) {
+    (c as any).organizations = c.organization_id ? { name: orgNameMap[c.organization_id] } : null
+  }
 
   // For each contact, sum activities + top topic.
   const ids = (contacts || []).map((c: any) => c.id).filter(Boolean)
