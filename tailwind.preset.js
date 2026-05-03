@@ -137,6 +137,17 @@ module.exports = {
           900: '#581c87',
           950: '#3b0764',
         },
+
+        // ================================================================
+        // SECTION ACCENTS — BLKOUT One Platform Design (locked 26 Apr 2026)
+        // ================================================================
+        news:    '#9B4DCA',
+        events:  '#FFE600',
+        voices:  '#00A86B',
+        members: '#E31E24',
+        shop:    '#FF8C00',
+        aivor:   '#5B9BD5',
+        cf:      '#FF1493',
       },
 
       // ================================================================
@@ -149,6 +160,10 @@ module.exports = {
         // Legacy aliases
         liberation: ['Inter', 'system-ui', 'sans-serif'],
         celebration: ['Space Grotesk', 'system-ui', 'sans-serif'],
+        // BLKOUT One Platform Design signature fonts (locked 26 Apr 2026).
+        signature: ['Work Sans', 'Inter', 'system-ui', 'sans-serif'],
+        disrupt:   ['Fraunces', 'Georgia', 'serif'],
+        meta:      ['IBM Plex Mono', 'JetBrains Mono', 'monospace'],
       },
 
       fontSize: {
@@ -208,6 +223,7 @@ module.exports = {
         'blkout': '0.75rem',
         'blkout-lg': '1rem',
         'blkout-xl': '1.5rem',
+        'sharp': '0',
       },
 
       // ================================================================
