@@ -51,7 +51,7 @@ export function useUpcomingDeadlines(daysAhead = 30) {
 export function useRecentActivities(limit = 10) {
   return useQuery({
     queryKey: ['activities', 'recent', limit],
-    queryFn: async () => {
+    queryFn: async (): Promise<any[]> => {
       const res = await fetch(`/api/crm/activities?limit=${limit}`)
       if (!res.ok) throw new Error('Failed to load activities')
       return res.json()
@@ -63,7 +63,7 @@ export function useRecentActivities(limit = 10) {
 export function usePendingTasks() {
   return useQuery({
     queryKey: ['tasks', 'pending'],
-    queryFn: async () => {
+    queryFn: async (): Promise<any[]> => {
       const res = await fetch(`/api/crm/tasks?status=pending&limit=10`)
       if (!res.ok) throw new Error('Failed to load tasks')
       return res.json()

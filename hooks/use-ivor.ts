@@ -226,7 +226,7 @@ function getMockIvorStats(): IvorStats {
 export function useRecentIvorInteractions(limit = 10) {
   return useQuery({
     queryKey: ['ivor', 'interactions', limit],
-    queryFn: async () => {
+    queryFn: async (): Promise<any[]> => {
       const res = await fetch(`/api/crm/activities?activityType=ivor_interaction&limit=${limit}`)
       if (!res.ok) throw new Error('Failed to load IVOR interactions')
       return res.json()
