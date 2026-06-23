@@ -2,14 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase-browser'
 import { checkIvorHealth, sendIvorMessage, searchIvorResources } from '@/lib/ivor'
 import type { IvorMessage, IvorChatRequest, IvorHealthStatus, IvorSearchRequest, IvorStats } from '@/types/ivor'
-
-// Lazy-load supabase client to avoid build-time errors
-function getSupabase() {
-  return createClient()
-}
 
 // IVOR health status hook
 export function useIvorHealth() {
@@ -101,21 +95,22 @@ export function useIvorChat() {
 // Log IVOR interaction to CRM database
 async function logIvorInteraction(contactId: string, query: string, response: string) {
   try {
-    await getSupabase().from('activities').insert({
-      contact_id: contactId,
-      activity_type: 'ivor_interaction',
-      subject: 'IVOR Conversation',
-      description: query.substring(0, 200),
-      metadata: {
-        query,
-        response: response.substring(0, 500),
-        timestamp: new Date().toISOString(),
-      },
-    })
-
-    // Update contact's IVOR interaction count
-    await getSupabase().rpc('increment_ivor_interactions', {
-      p_contact_id: contactId,
+    // Server route inserts the activity (service role) and increments the
+    // contact's interaction count.
+    await fetch('/api/crm/activities', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contact_id: contactId,
+        activity_type: 'ivor_interaction',
+        subject: 'IVOR Conversation',
+        description: query.substring(0, 200),
+        metadata: {
+          query,
+          response: response.substring(0, 500),
+          timestamp: new Date().toISOString(),
+        },
+      }),
     })
   } catch (error) {
     console.error('Failed to log IVOR interaction:', error)
@@ -134,18 +129,13 @@ export function useIvorStats() {
   return useQuery<IvorStats>({
     queryKey: ['ivor', 'stats'],
     queryFn: async () => {
-      // Get IVOR interaction stats from CRM database
-      const { data: activities, error } = await getSupabase()
-        .from('activities')
-        .select('*')
-        .eq('activity_type', 'ivor_interaction')
-        .order('occurred_at', { ascending: false })
-        .limit(100)
-
-      if (error) {
-        console.error('Failed to fetch IVOR stats:', error)
+      // Get IVOR interaction stats from CRM database (via server route)
+      const res = await fetch('/api/crm/activities?activityType=ivor_interaction&limit=100')
+      if (!res.ok) {
+        console.error('Failed to fetch IVOR stats:', res.statusText)
         return getMockIvorStats()
       }
+      const activities: any[] = await res.json()
 
       // Calculate statistics
       const now = new Date()
@@ -237,18 +227,9 @@ export function useRecentIvorInteractions(limit = 10) {
   return useQuery({
     queryKey: ['ivor', 'interactions', limit],
     queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('activities')
-        .select(`
-          *,
-          contact:contacts(id, first_name, last_name)
-        `)
-        .eq('activity_type', 'ivor_interaction')
-        .order('occurred_at', { ascending: false })
-        .limit(limit)
-
-      if (error) throw error
-      return data
+      const res = await fetch(`/api/crm/activities?activityType=ivor_interaction&limit=${limit}`)
+      if (!res.ok) throw new Error('Failed to load IVOR interactions')
+      return res.json()
     },
   })
 }

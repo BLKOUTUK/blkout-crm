@@ -52,18 +52,9 @@ export function useRecentActivities(limit = 10) {
   return useQuery({
     queryKey: ['activities', 'recent', limit],
     queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('activities')
-        .select(`
-          *,
-          contact:contacts(id, first_name, last_name),
-          organization:organizations(id, name)
-        `)
-        .order('occurred_at', { ascending: false })
-        .limit(limit)
-
-      if (error) throw error
-      return data
+      const res = await fetch(`/api/crm/activities?limit=${limit}`)
+      if (!res.ok) throw new Error('Failed to load activities')
+      return res.json()
     },
   })
 }
@@ -73,19 +64,9 @@ export function usePendingTasks() {
   return useQuery({
     queryKey: ['tasks', 'pending'],
     queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('tasks')
-        .select(`
-          *,
-          contact:contacts(id, first_name, last_name),
-          organization:organizations(id, name)
-        `)
-        .eq('status', 'pending')
-        .order('due_date', { ascending: true })
-        .limit(10)
-
-      if (error) throw error
-      return data
+      const res = await fetch(`/api/crm/tasks?status=pending&limit=10`)
+      if (!res.ok) throw new Error('Failed to load tasks')
+      return res.json()
     },
   })
 }
