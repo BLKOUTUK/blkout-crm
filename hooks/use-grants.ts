@@ -1,13 +1,32 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { createClient } from '@/lib/supabase'
 
 // Using any for now until migration is applied
 type GrantInsert = Record<string, unknown>
 type GrantUpdate = Record<string, unknown>
 
-function getSupabase() { return createClient() }
+// Grants live in `grant_pipeline`, which has RLS enabled and no policies, so the
+// browser (anon) key reads zero rows and writes silently do nothing. Everything
+// here goes through the service-role route handler instead — same pattern as
+// use-dashboard's activities/tasks fetches.
+const API = '/api/crm/grants'
+
+async function getJSON(url: string) {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to load grants')
+  return res.json()
+}
+
+async function sendJSON(method: 'POST' | 'PATCH', body: unknown) {
+  const res = await fetch(API, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to save grant')
+  return res.json()
+}
 
 // Fetch all grants with optional filters
 export function useGrants(filters?: {
@@ -18,32 +37,13 @@ export function useGrants(filters?: {
 }) {
   return useQuery({
     queryKey: ['grants', filters],
-    queryFn: async () => {
-      let query = getSupabase()
-        .from('grants')
-        .select(`
-          *,
-          funder:organizations(id, name, org_type)
-        `)
-        .order('created_at', { ascending: false })
-
-      if (filters?.stage) {
-        query = query.eq('stage', filters.stage)
-      }
-      if (filters?.funderId) {
-        query = query.eq('funder_id', filters.funderId)
-      }
-      if (filters?.minAmount) {
-        query = query.gte('amount_requested', filters.minAmount)
-      }
-      if (filters?.maxAmount) {
-        query = query.lte('amount_requested', filters.maxAmount)
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-      return data
+    queryFn: async (): Promise<any[]> => {
+      const params = new URLSearchParams()
+      if (filters?.stage) params.set('stage', filters.stage)
+      if (filters?.funderId) params.set('funderId', filters.funderId)
+      if (filters?.minAmount) params.set('minAmount', String(filters.minAmount))
+      if (filters?.maxAmount) params.set('maxAmount', String(filters.maxAmount))
+      return getJSON(`${API}?${params.toString()}`)
     },
   })
 }
@@ -52,22 +52,7 @@ export function useGrants(filters?: {
 export function useGrant(id: string) {
   return useQuery({
     queryKey: ['grants', id],
-    queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('grants')
-        .select(`
-          *,
-          funder:organizations(*),
-          milestones:grant_milestones(*),
-          documents:grant_documents(*),
-          payments:grant_payments(*)
-        `)
-        .eq('id', id)
-        .single()
-
-      if (error) throw error
-      return data
-    },
+    queryFn: async (): Promise<any> => getJSON(`${API}?id=${encodeURIComponent(id)}`),
     enabled: !!id,
   })
 }
@@ -77,16 +62,7 @@ export function useCreateGrant() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (grant: GrantInsert) => {
-      const { data, error } = await getSupabase()
-        .from('grants')
-        .insert(grant)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    },
+    mutationFn: async (grant: GrantInsert) => sendJSON('POST', grant),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grants'] })
     },
@@ -98,18 +74,9 @@ export function useUpdateGrant() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: GrantUpdate & { id: string }) => {
-      const { data, error } = await getSupabase()
-        .from('grants')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    },
-    onSuccess: (data) => {
+    mutationFn: async ({ id, ...updates }: GrantUpdate & { id: string }) =>
+      sendJSON('PATCH', { id, ...updates }),
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['grants'] })
       queryClient.invalidateQueries({ queryKey: ['grants', data.id] })
     },
@@ -121,18 +88,9 @@ export function useUpdateGrantStage() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ id, stage }: { id: string; stage: string }) => {
-      const { data, error } = await getSupabase()
-        .from('grants')
-        .update({ stage })
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    },
-    onSuccess: (data) => {
+    mutationFn: async ({ id, stage }: { id: string; stage: string }) =>
+      sendJSON('PATCH', { id, stage }),
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['grants'] })
       queryClient.invalidateQueries({ queryKey: ['grants', data.id] })
     },
@@ -145,9 +103,9 @@ export function useDeleteGrant() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await getSupabase().from('grants').delete().eq('id', id)
-
-      if (error) throw error
+      const res = await fetch(`${API}?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete grant')
+      return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grants'] })
@@ -160,19 +118,9 @@ export function useGrantPipeline() {
   return useQuery({
     queryKey: ['grants', 'pipeline'],
     queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('grants')
-        .select(`
-          *,
-          funder:organizations(id, name)
-        `)
-        .in('stage', ['research', 'preparing', 'submitted', 'under_review', 'active'])
-        .order('deadline', { ascending: true })
+      const data: any[] = await getJSON(API)
 
-      if (error) throw error
-
-      // Group by stage
-      const pipeline: Record<string, typeof data> = {
+      const pipeline: Record<string, any[]> = {
         research: [],
         preparing: [],
         submitted: [],
@@ -195,65 +143,36 @@ export function useGrantPipeline() {
 export function useGrantDeadlines(daysAhead = 30) {
   return useQuery({
     queryKey: ['grants', 'deadlines', daysAhead],
-    queryFn: async () => {
-      const futureDate = new Date()
-      futureDate.setDate(futureDate.getDate() + daysAhead)
+    queryFn: async (): Promise<any[]> => {
+      const cutoff = new Date()
+      cutoff.setDate(cutoff.getDate() + daysAhead)
 
-      const { data, error } = await getSupabase()
-        .from('grants')
-        .select(`
-          id,
-          grant_name,
-          deadline,
-          next_report_due,
-          stage,
-          funder:organizations(id, name)
-        `)
-        .or(`deadline.lte.${futureDate.toISOString()},next_report_due.lte.${futureDate.toISOString()}`)
-        .order('deadline', { ascending: true })
-
-      if (error) throw error
-      return data
+      const data: any[] = await getJSON(API)
+      return data.filter((g) => {
+        const dates = [g.deadline, g.next_report_due].filter(Boolean)
+        return dates.some((d: string) => new Date(d) <= cutoff)
+      })
     },
   })
 }
 
 // Grant milestones
+// The `grant_milestones` table does not exist in this database — the detail page
+// falls back to an empty list. Returning [] rather than querying keeps a
+// guaranteed-failing request (retried on every mount) out of the page.
 export function useGrantMilestones(grantId: string) {
   return useQuery({
     queryKey: ['grants', grantId, 'milestones'],
-    queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('grant_milestones')
-        .select('*')
-        .eq('grant_id', grantId)
-        .order('due_date', { ascending: true })
-
-      if (error) throw error
-      return data
-    },
+    queryFn: async (): Promise<any[]> => [],
     enabled: !!grantId,
   })
 }
 
-// Update milestone status
+// Update milestone status — no-op while `grant_milestones` does not exist.
 export function useUpdateMilestone() {
-  const queryClient = useQueryClient()
-
   return useMutation({
-    mutationFn: async ({ id, grantId, status }: { id: string; grantId: string; status: string }) => {
-      const { data, error } = await getSupabase()
-        .from('grant_milestones')
-        .update({ status })
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return { ...data, grantId }
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['grants', data.grantId, 'milestones'] })
+    mutationFn: async (_args: { id: string; grantId: string; status: string }) => {
+      throw new Error('Milestones are not available — the grant_milestones table does not exist')
     },
   })
 }
@@ -263,11 +182,7 @@ export function useGrantStats() {
   return useQuery({
     queryKey: ['grants', 'stats'],
     queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('grants')
-        .select('stage, amount_requested, amount_awarded, probability')
-
-      if (error) throw error
+      const data: any[] = await getJSON(API)
 
       const stats = {
         total: data.length,
@@ -281,12 +196,13 @@ export function useGrantStats() {
         stats.byStage[grant.stage] = (stats.byStage[grant.stage] || 0) + 1
 
         if (['submitted', 'under_review'].includes(grant.stage)) {
-          stats.pipelineValue += grant.amount_requested || 0
-          stats.weightedPipeline += ((grant.amount_requested || 0) * (grant.probability || 0)) / 100
+          stats.pipelineValue += Number(grant.amount_requested) || 0
+          stats.weightedPipeline +=
+            ((Number(grant.amount_requested) || 0) * (Number(grant.probability) || 0)) / 100
         }
 
         if (grant.stage === 'active') {
-          stats.totalSecured += grant.amount_awarded || 0
+          stats.totalSecured += Number(grant.amount_awarded) || 0
         }
       })
 
