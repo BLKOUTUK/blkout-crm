@@ -24,7 +24,11 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Skip Next.js internals + static assets
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Skip Next.js internals + static assets, and the public endpoints called
+    // cross-origin from the blkoutuk.com sites (join/share/data-rights, the
+    // legacy subscribe alias, and health). A browser never sends Authorization
+    // on a CORS preflight, so gating these here 401'd every public newsletter
+    // signup from 29 Apr to 3 Sep 2026.
+    '/((?!_next/static|_next/image|favicon.ico|api/community|api/newsletter|api/health|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

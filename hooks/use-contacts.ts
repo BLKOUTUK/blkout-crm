@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { createClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase-browser'
 
 // Using any for now until migration is applied
 type ContactInsert = Record<string, unknown>
@@ -49,17 +49,13 @@ export function useContact(id: string) {
   return useQuery({
     queryKey: ['contacts', id],
     queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('contacts')
-        .select(`
-          *,
-          organization:organizations(*)
-        `)
-        .eq('id', id)
-        .single()
-
-      if (error) throw error
-      return data
+      // Server route on service_role — contacts has no anon read policy (3 Sep 2026).
+      const res = await fetch(`/api/crm/contacts/${id}`)
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body?.error || 'Failed to load contact')
+      }
+      return res.json()
     },
     enabled: !!id,
   })
