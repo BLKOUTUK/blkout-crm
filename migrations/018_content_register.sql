@@ -1,7 +1,10 @@
 -- 018_content_register.sql — one register, not five (Thu 10 Sep 2026)
 -- Brief: apps/comms-blkout/docs/content-one-register-brief-2026-09-10.md (Opus, section A
 -- and the insert path of section D). Applied via mcp__supabase__apply_migration as
--- `content_register` on 10 Sep 2026.
+-- `content_register` on 10 Sep 2026, then amended the same day as
+-- `content_register_campaigns_list` (admin_content_list also returns the campaign slugs,
+-- for the new-item form's datalist). This file is the union of the two; the migration
+-- ledger holds them as two entries.
 --
 -- Purpose: `public.content_calendar` becomes the ONE place BLKOUT's scheduled content
 -- lives. Until today the /admin calendar page read four campaign JSON files compiled into
