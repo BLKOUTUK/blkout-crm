@@ -44,3 +44,10 @@ next-env.d.ts
 supabase/.branches
 supabase/.temp
 *.local.md
+graphify-out/
+
+# personal-data exports never belong in the repo (5 Sep 2026)
+*.csv
+!**/templates/*.csv
+# data/ = gmail exports, AI-brain correspondence bundles, match reviews (19 Sep 2026)
+data/
