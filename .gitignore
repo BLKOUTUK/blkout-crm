@@ -44,6 +44,10 @@ next-env.d.ts
 supabase/.branches
 supabase/.temp
 *.local.md
+
+# tool-metrics files (regenerated locally by claude-flow/ruv-swarm; ticket 08c)
+.claude-flow/metrics/
+.swarm/
 graphify-out/
 
 # personal-data exports never belong in the repo (5 Sep 2026)
