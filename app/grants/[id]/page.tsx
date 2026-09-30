@@ -1,9 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -24,126 +23,97 @@ import {
   Edit,
   Trash2,
   CheckSquare,
-  Clock,
-  AlertCircle,
-  TrendingUp,
   Upload,
   Download,
 } from 'lucide-react'
 import { cn, formatDate, formatCurrency, getDaysUntil, grantStageLabels, grantStageColors } from '@/lib/utils'
-
-// Mock grant data
-const mockGrant = {
-  id: '3',
-  grant_name: 'Comic Relief - Community Grant',
-  funder: {
-    id: '3',
-    name: 'Comic Relief',
-    org_type: 'funder_foundation',
-  },
-  amount_requested: 10000,
-  amount_awarded: 10000,
-  stage: 'active',
-  probability: 100,
-  grant_start_date: '2025-12-01',
-  grant_end_date: '2026-11-30',
-  next_report_due: '2026-03-01',
-  application_deadline: '2025-10-15',
-  decision_expected: '2025-11-15',
-  grant_focus: 'Community wellbeing and mental health support for Black queer men',
-  description: 'Funding to deliver peer support groups and mental health workshops across London, reaching 200+ community members.',
-  objectives: [
-    'Deliver 12 peer support group sessions',
-    'Run 6 mental health workshops',
-    'Train 10 peer facilitators',
-    'Reach 200+ community members',
-  ],
-  status_notes: 'Grant active. First quarterly report due March 2026.',
-  contact_name: 'Tom Brown',
-  contact_email: 't.brown@comicrelief.com',
-  created_at: '2025-08-01T10:00:00Z',
-  updated_at: '2025-12-01T14:30:00Z',
-}
-
-const mockMilestones = [
-  {
-    id: '1',
-    title: 'Recruit peer facilitators',
-    due_date: '2026-01-15',
-    status: 'pending',
-    description: 'Recruit and onboard 10 peer facilitators',
-  },
-  {
-    id: '2',
-    title: 'Launch first support group',
-    due_date: '2026-02-01',
-    status: 'pending',
-    description: 'First peer support group session in East London',
-  },
-  {
-    id: '3',
-    title: 'Q1 Report submission',
-    due_date: '2026-03-01',
-    status: 'pending',
-    description: 'Submit first quarterly progress report to Comic Relief',
-  },
-]
-
-const mockDocuments = [
-  {
-    id: '1',
-    name: 'Grant Agreement.pdf',
-    type: 'contract',
-    uploaded_at: '2025-12-01',
-  },
-  {
-    id: '2',
-    name: 'Budget Spreadsheet.xlsx',
-    type: 'budget',
-    uploaded_at: '2025-11-20',
-  },
-  {
-    id: '3',
-    name: 'Application Form.pdf',
-    type: 'application',
-    uploaded_at: '2025-10-10',
-  },
-]
-
-const mockPayments = [
-  {
-    id: '1',
-    amount: 5000,
-    date: '2025-12-01',
-    type: 'Initial payment',
-    status: 'received',
-  },
-  {
-    id: '2',
-    amount: 5000,
-    date: '2026-06-01',
-    type: 'Final payment',
-    status: 'scheduled',
-  },
-]
+import { useGrant, useGrantMilestones } from '@/hooks/use-grants'
 
 const stageOrder = ['research', 'preparing', 'submitted', 'under_review', 'approved', 'active', 'completed']
 
 export default function GrantDetailPage() {
   const params = useParams()
-  const grant = mockGrant
+  const grantId = params.id as string
+  const { data: grant, isLoading, error } = useGrant(grantId)
+  const { data: milestones } = useGrantMilestones(grantId)
+
+  if (isLoading) return (
+    <div className="space-y-6">
+      <div className="flex items-start gap-4">
+        <Link href="/grants">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="font-display text-3xl font-bold">Grant Details</h1>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    </div>
+  )
+
+  if (error) return (
+    <div className="space-y-6">
+      <div className="flex items-start gap-4">
+        <Link href="/grants">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="font-display text-3xl font-bold">Grant Details</h1>
+        </div>
+      </div>
+      <Card>
+        <CardContent className="p-8 text-center">
+          <p className="text-destructive">Failed to load grant: {(error as Error).message}</p>
+        </CardContent>
+      </Card>
+    </div>
+  )
+
+  if (!grant) return (
+    <div className="space-y-6">
+      <div className="flex items-start gap-4">
+        <Link href="/grants">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="font-display text-3xl font-bold">Grant Details</h1>
+        </div>
+      </div>
+      <Card>
+        <CardContent className="p-8 text-center">
+          <p className="text-muted-foreground">Grant not found.</p>
+        </CardContent>
+      </Card>
+    </div>
+  )
 
   // Calculate progress through stages
   const currentStageIndex = stageOrder.indexOf(grant.stage)
-  const stageProgress = ((currentStageIndex + 1) / stageOrder.length) * 100
 
   // Calculate grant timeline progress
-  const startDate = new Date(grant.grant_start_date)
-  const endDate = new Date(grant.grant_end_date)
-  const now = new Date()
-  const totalDuration = endDate.getTime() - startDate.getTime()
-  const elapsed = now.getTime() - startDate.getTime()
-  const timelineProgress = Math.min(Math.max((elapsed / totalDuration) * 100, 0), 100)
+  const hasTimeline = grant.grant_start_date && grant.grant_end_date
+  let timelineProgress = 0
+  if (hasTimeline) {
+    const startDate = new Date(grant.grant_start_date)
+    const endDate = new Date(grant.grant_end_date)
+    const now = new Date()
+    const totalDuration = endDate.getTime() - startDate.getTime()
+    const elapsed = now.getTime() - startDate.getTime()
+    timelineProgress = Math.min(Math.max((elapsed / totalDuration) * 100, 0), 100)
+  }
+
+  const allMilestones = milestones || grant.milestones || []
+  const allDocuments = grant.documents || []
+  const allPayments = grant.payments || []
 
   return (
     <div className="space-y-6">
@@ -162,13 +132,15 @@ export default function GrantDetailPage() {
                 {grantStageLabels[grant.stage]}
               </Badge>
             </div>
-            <Link
-              href={`/organizations/${grant.funder.id}`}
-              className="text-muted-foreground hover:underline flex items-center gap-1"
-            >
-              <Building2 className="h-4 w-4" />
-              {grant.funder.name}
-            </Link>
+            {grant.funder && (
+              <Link
+                href={`/organizations/${grant.funder.id}`}
+                className="text-muted-foreground hover:underline flex items-center gap-1"
+              >
+                <Building2 className="h-4 w-4" />
+                {grant.funder.name}
+              </Link>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -213,7 +185,7 @@ export default function GrantDetailPage() {
             <div className="text-2xl font-bold">{formatCurrency(grant.amount_awarded || 0)}</div>
             {grant.amount_requested !== grant.amount_awarded && (
               <p className="text-xs text-muted-foreground">
-                Requested: {formatCurrency(grant.amount_requested)}
+                Requested: {formatCurrency(grant.amount_requested || 0)}
               </p>
             )}
           </CardContent>
@@ -226,13 +198,19 @@ export default function GrantDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-medium">
-              {formatDate(grant.grant_start_date)} - {formatDate(grant.grant_end_date)}
-            </div>
-            <Progress value={timelineProgress} className="mt-2 h-2" />
-            <p className="text-xs text-muted-foreground mt-1">
-              {Math.round(timelineProgress)}% elapsed
-            </p>
+            {hasTimeline ? (
+              <>
+                <div className="text-lg font-medium">
+                  {formatDate(grant.grant_start_date)} - {formatDate(grant.grant_end_date)}
+                </div>
+                <Progress value={timelineProgress} className="mt-2 h-2" />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {Math.round(timelineProgress)}% elapsed
+                </p>
+              </>
+            ) : (
+              <div className="text-muted-foreground">Not yet set</div>
+            )}
           </CardContent>
         </Card>
 
@@ -263,8 +241,8 @@ export default function GrantDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{grant.probability}%</div>
-            <Progress value={grant.probability} className="mt-2 h-2" />
+            <div className="text-2xl font-bold">{grant.probability ?? 0}%</div>
+            <Progress value={grant.probability ?? 0} className="mt-2 h-2" />
           </CardContent>
         </Card>
       </div>
@@ -278,19 +256,23 @@ export default function GrantDetailPage() {
               <CardTitle className="text-lg">Grant Overview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground">Focus Area</h4>
-                <p className="mt-1">{grant.grant_focus}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground">Description</h4>
-                <p className="mt-1 text-sm">{grant.description}</p>
-              </div>
-              {grant.objectives && grant.objectives.length > 0 && (
+              {grant.grant_focus && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground">Focus Area</h4>
+                  <p className="mt-1">{grant.grant_focus}</p>
+                </div>
+              )}
+              {grant.description && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground">Description</h4>
+                  <p className="mt-1 text-sm">{grant.description}</p>
+                </div>
+              )}
+              {(grant.objectives || []).length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground">Objectives</h4>
                   <ul className="mt-2 space-y-1">
-                    {grant.objectives.map((obj, i) => (
+                    {(grant.objectives || []).map((obj: any, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm">
                         <CheckSquare className="mt-0.5 h-4 w-4 text-muted-foreground" />
                         {obj}
@@ -305,6 +287,9 @@ export default function GrantDetailPage() {
                     <strong>Status Notes:</strong> {grant.status_notes}
                   </p>
                 </div>
+              )}
+              {!grant.grant_focus && !grant.description && !(grant.objectives || []).length && !grant.status_notes && (
+                <p className="text-muted-foreground">No overview details available.</p>
               )}
             </CardContent>
           </Card>
@@ -326,40 +311,50 @@ export default function GrantDetailPage() {
             </TabsList>
 
             <TabsContent value="milestones" className="mt-4 space-y-4">
-              {mockMilestones.map((milestone) => (
-                <Card key={milestone.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <input
-                          type="checkbox"
-                          className="mt-1 h-4 w-4 rounded border-gray-300"
-                          checked={milestone.status === 'completed'}
-                          readOnly
-                        />
-                        <div>
-                          <p className="font-medium">{milestone.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {milestone.description}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
-                          {formatDate(milestone.due_date)}
-                        </div>
-                        <Badge
-                          variant={milestone.status === 'completed' ? 'secondary' : 'outline'}
-                          className="mt-1"
-                        >
-                          {milestone.status}
-                        </Badge>
-                      </div>
-                    </div>
+              {allMilestones.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <p className="text-muted-foreground">No milestones yet.</p>
                   </CardContent>
                 </Card>
-              ))}
+              ) : (
+                allMilestones.map((milestone: any) => (
+                  <Card key={milestone.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            className="mt-1 h-4 w-4 rounded border-gray-300"
+                            checked={milestone.status === 'completed'}
+                            readOnly
+                          />
+                          <div>
+                            <p className="font-medium">{milestone.title}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {milestone.description}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          {milestone.due_date && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Calendar className="h-3 w-3" />
+                              {formatDate(milestone.due_date)}
+                            </div>
+                          )}
+                          <Badge
+                            variant={milestone.status === 'completed' ? 'secondary' : 'outline'}
+                            className="mt-1"
+                          >
+                            {milestone.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
               <Button variant="outline" className="w-full">
                 <CheckSquare className="mr-2 h-4 w-4" />
                 Add Milestone
@@ -367,29 +362,39 @@ export default function GrantDetailPage() {
             </TabsContent>
 
             <TabsContent value="documents" className="mt-4 space-y-4">
-              {mockDocuments.map((doc) => (
-                <Card key={doc.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-8 w-8 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{doc.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Uploaded {formatDate(doc.uploaded_at)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{doc.type}</Badge>
-                        <Button variant="ghost" size="icon">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
+              {allDocuments.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <p className="text-muted-foreground">No documents uploaded yet.</p>
                   </CardContent>
                 </Card>
-              ))}
+              ) : (
+                allDocuments.map((doc: any) => (
+                  <Card key={doc.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-8 w-8 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">{doc.name}</p>
+                            {doc.uploaded_at && (
+                              <p className="text-sm text-muted-foreground">
+                                Uploaded {formatDate(doc.uploaded_at)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {doc.type && <Badge variant="outline">{doc.type}</Badge>}
+                          <Button variant="ghost" size="icon">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
               <Button variant="outline" className="w-full">
                 <Upload className="mr-2 h-4 w-4" />
                 Upload Document
@@ -397,50 +402,62 @@ export default function GrantDetailPage() {
             </TabsContent>
 
             <TabsContent value="payments" className="mt-4 space-y-4">
-              {mockPayments.map((payment) => (
-                <Card key={payment.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{payment.type}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatDate(payment.date)}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold">{formatCurrency(payment.amount)}</p>
-                        <Badge
-                          variant={payment.status === 'received' ? 'secondary' : 'outline'}
-                        >
-                          {payment.status}
-                        </Badge>
-                      </div>
-                    </div>
+              {allPayments.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <p className="text-muted-foreground">No payments recorded yet.</p>
                   </CardContent>
                 </Card>
-              ))}
-              <div className="rounded-lg bg-muted p-4">
-                <div className="flex justify-between text-sm">
-                  <span>Total Received</span>
-                  <span className="font-bold">
-                    {formatCurrency(
-                      mockPayments
-                        .filter((p) => p.status === 'received')
-                        .reduce((sum, p) => sum + p.amount, 0)
-                    )}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm mt-1">
-                  <span>Outstanding</span>
-                  <span className="font-bold">
-                    {formatCurrency(
-                      mockPayments
-                        .filter((p) => p.status !== 'received')
-                        .reduce((sum, p) => sum + p.amount, 0)
-                    )}
-                  </span>
-                </div>
-              </div>
+              ) : (
+                <>
+                  {allPayments.map((payment: any) => (
+                    <Card key={payment.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{payment.type}</p>
+                            {payment.date && (
+                              <p className="text-sm text-muted-foreground">
+                                {formatDate(payment.date)}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold">{formatCurrency(payment.amount || 0)}</p>
+                            <Badge
+                              variant={payment.status === 'received' ? 'secondary' : 'outline'}
+                            >
+                              {payment.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  <div className="rounded-lg bg-muted p-4">
+                    <div className="flex justify-between text-sm">
+                      <span>Total Received</span>
+                      <span className="font-bold">
+                        {formatCurrency(
+                          allPayments
+                            .filter((p: any) => p.status === 'received')
+                            .reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm mt-1">
+                      <span>Outstanding</span>
+                      <span className="font-bold">
+                        {formatCurrency(
+                          allPayments
+                            .filter((p: any) => p.status !== 'received')
+                            .reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
             </TabsContent>
           </Tabs>
         </div>
@@ -474,7 +491,7 @@ export default function GrantDetailPage() {
                           !isActive && !isPast && 'border'
                         )}
                       >
-                        {isPast ? '✓' : index + 1}
+                        {isPast ? '\u2713' : index + 1}
                       </div>
                       <span className={cn('text-sm', isActive && 'font-medium')}>
                         {grantStageLabels[stage]}
@@ -492,21 +509,29 @@ export default function GrantDetailPage() {
               <CardTitle className="text-lg">Funder Contact</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div>
-                <p className="font-medium">{grant.contact_name}</p>
-                <a
-                  href={`mailto:${grant.contact_email}`}
-                  className="text-sm text-muted-foreground hover:underline"
-                >
-                  {grant.contact_email}
-                </a>
-              </div>
-              <Link href={`/organizations/${grant.funder.id}`}>
-                <Button variant="outline" className="w-full">
-                  <Building2 className="mr-2 h-4 w-4" />
-                  View Organization
-                </Button>
-              </Link>
+              {grant.contact_name ? (
+                <div>
+                  <p className="font-medium">{grant.contact_name}</p>
+                  {grant.contact_email && (
+                    <a
+                      href={`mailto:${grant.contact_email}`}
+                      className="text-sm text-muted-foreground hover:underline"
+                    >
+                      {grant.contact_email}
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No contact info available.</p>
+              )}
+              {grant.funder && (
+                <Link href={`/organizations/${grant.funder.id}`}>
+                  <Button variant="outline" className="w-full">
+                    <Building2 className="mr-2 h-4 w-4" />
+                    View Organization
+                  </Button>
+                </Link>
+              )}
             </CardContent>
           </Card>
 
@@ -516,24 +541,33 @@ export default function GrantDetailPage() {
               <CardTitle className="text-lg">Key Dates</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Start Date</span>
-                <span>{formatDate(grant.grant_start_date)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">End Date</span>
-                <span>{formatDate(grant.grant_end_date)}</span>
-              </div>
+              {grant.grant_start_date && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Start Date</span>
+                  <span>{formatDate(grant.grant_start_date)}</span>
+                </div>
+              )}
+              {grant.grant_end_date && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">End Date</span>
+                  <span>{formatDate(grant.grant_end_date)}</span>
+                </div>
+              )}
               {grant.next_report_due && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Next Report</span>
                   <span>{formatDate(grant.next_report_due)}</span>
                 </div>
               )}
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Created</span>
-                <span>{formatDate(grant.created_at)}</span>
-              </div>
+              {grant.created_at && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Created</span>
+                  <span>{formatDate(grant.created_at)}</span>
+                </div>
+              )}
+              {!grant.grant_start_date && !grant.grant_end_date && !grant.next_report_due && !grant.created_at && (
+                <p className="text-muted-foreground">No dates recorded.</p>
+              )}
             </CardContent>
           </Card>
         </div>

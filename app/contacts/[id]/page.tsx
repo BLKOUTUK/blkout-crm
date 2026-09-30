@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { useQuery } from '@tanstack/react-query'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -30,74 +30,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { cn, getInitials, formatDate, statusColors } from '@/lib/utils'
-
-// Mock contact data - replace with real Supabase query
-const mockContact = {
-  id: '1',
-  first_name: 'Jane',
-  last_name: 'Smith',
-  email: 'jane.smith@dhsc.gov.uk',
-  phone: '+44 20 7xxx xxxx',
-  mobile: '+44 77xx xxx xxx',
-  contact_type: ['government_official', 'partner_contact'],
-  status: 'active',
-  engagement_level: 'high',
-  influence_level: 'decision_maker',
-  job_title: 'Policy Lead - Health Inequalities',
-  organization: {
-    id: '1',
-    name: 'Department of Health and Social Care',
-    org_type: 'government_public_sector',
-  },
-  address: 'DHSC, 39 Victoria Street, London SW1H 0EU',
-  preferred_contact_method: 'email',
-  notes: 'Key ally for HIV policy work. Met at 2024 conference. Interested in community-led approaches.',
-  tags: ['HIV policy', 'health inequalities', 'key relationship'],
-  created_at: '2024-06-15T10:00:00Z',
-  updated_at: '2025-01-10T14:30:00Z',
-  last_contacted: '2025-01-08T09:00:00Z',
-}
-
-const mockActivities = [
-  {
-    id: '1',
-    activity_type: 'meeting',
-    subject: 'HIV Policy Discussion',
-    occurred_at: '2025-01-08T09:00:00Z',
-    description: 'Discussed upcoming policy changes and BLKOUT input opportunities',
-  },
-  {
-    id: '2',
-    activity_type: 'email',
-    subject: 'Follow-up: Community Consultation',
-    occurred_at: '2025-01-05T14:00:00Z',
-    description: 'Sent consultation response document',
-  },
-  {
-    id: '3',
-    activity_type: 'call',
-    subject: 'Quick Check-in',
-    occurred_at: '2024-12-20T11:00:00Z',
-    description: 'Brief call about Q1 2025 planning',
-  },
-]
-
-const mockTasks = [
-  {
-    id: '1',
-    title: 'Send policy brief',
-    due_date: '2025-01-20',
-    priority: 'high',
-    status: 'pending',
-  },
-  {
-    id: '2',
-    title: 'Schedule quarterly review',
-    due_date: '2025-02-01',
-    priority: 'medium',
-    status: 'pending',
-  },
-]
+import { useContact } from '@/hooks/use-contacts'
 
 const contactTypeLabels: Record<string, string> = {
   cbs_member: 'CBS Member',
@@ -138,7 +71,58 @@ const activityIcons: Record<string, React.ElementType> = {
 
 export default function ContactDetailPage() {
   const params = useParams()
-  const contact = mockContact // Replace with useContact(params.id)
+  const { data: contact, isLoading, error } = useContact(params.id as string)
+
+  const { data: activities = [] } = useQuery({
+    queryKey: ['activities', 'contact', params.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/crm/activities?contactId=${params.id}&limit=20`)
+      if (!res.ok) throw new Error('Failed to load activities')
+      return res.json()
+    },
+    enabled: !!params.id,
+  })
+
+  const { data: tasks = [] } = useQuery({
+    queryKey: ['tasks', 'contact', params.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/crm/tasks?contactId=${params.id}&limit=20`)
+      if (!res.ok) throw new Error('Failed to load tasks')
+      return res.json()
+    },
+    enabled: !!params.id,
+  })
+
+  if (isLoading) return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href="/contacts">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    </div>
+  )
+
+  if (error || !contact) return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href="/contacts">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="font-display text-2xl font-bold">Contact not found</h1>
+          <p className="text-muted-foreground">
+            {(error as Error)?.message || 'This contact does not exist.'}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
 
   return (
     <div className="space-y-6">
@@ -210,14 +194,16 @@ export default function ContactDetailPage() {
 
       {/* Status Badges */}
       <div className="flex flex-wrap gap-2">
-        {contact.contact_type.map((type) => (
+        {(contact.contact_type || []).map((type: string) => (
           <Badge key={type} variant="outline">
             {contactTypeLabels[type] || type}
           </Badge>
         ))}
+        {contact.engagement_level && (
         <Badge className={cn('text-xs', engagementColors[contact.engagement_level])}>
           {contact.engagement_level} engagement
         </Badge>
+        )}
         <Badge className={cn('text-xs', statusColors[contact.status])}>
           {contact.status}
         </Badge>
@@ -240,7 +226,7 @@ export default function ContactDetailPage() {
             </TabsList>
 
             <TabsContent value="activities" className="mt-4 space-y-4">
-              {mockActivities.map((activity) => {
+              {activities.map((activity: any) => {
                 const Icon = activityIcons[activity.activity_type] || MessageSquare
                 return (
                   <Card key={activity.id}>
@@ -273,7 +259,7 @@ export default function ContactDetailPage() {
             </TabsContent>
 
             <TabsContent value="tasks" className="mt-4 space-y-4">
-              {mockTasks.map((task) => (
+              {tasks.map((task: any) => (
                 <Card key={task.id}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
@@ -310,7 +296,7 @@ export default function ContactDetailPage() {
                 <CardContent className="p-4">
                   <p className="text-sm">{contact.notes}</p>
                   <div className="mt-4 flex flex-wrap gap-1">
-                    {contact.tags?.map((tag) => (
+                    {contact.tags?.map((tag: string) => (
                       <Badge key={tag} variant="outline" className="text-xs">
                         {tag}
                       </Badge>
@@ -391,18 +377,24 @@ export default function ContactDetailPage() {
               <CardTitle className="text-lg">Timeline</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
+              {contact.last_contacted && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Last contacted</span>
                 <span>{formatDate(contact.last_contacted)}</span>
               </div>
+              )}
+              {contact.created_at && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Created</span>
                 <span>{formatDate(contact.created_at)}</span>
               </div>
+              )}
+              {contact.updated_at && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Last updated</span>
                 <span>{formatDate(contact.updated_at)}</span>
               </div>
+              )}
             </CardContent>
           </Card>
         </div>

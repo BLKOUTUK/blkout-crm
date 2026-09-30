@@ -23,105 +23,52 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { cn, orgTypeLabels, orgTypeIcons, relationshipLabels, statusColors } from '@/lib/utils'
-
-// Mock data
-const mockOrganizations = [
-  {
-    id: '1',
-    name: 'Department of Health and Social Care',
-    org_type: 'government_public_sector',
-    relationship_type: 'policy_ally',
-    relationship_status: 'active',
-    policy_areas: ['hiv_aids', 'sexual_health', 'mental_health'],
-    website: 'https://gov.uk/dhsc',
-    primary_contact: { first_name: 'Jane', last_name: 'Smith' },
-  },
-  {
-    id: '2',
-    name: 'UNAIDS',
-    org_type: 'international_ngo',
-    relationship_type: 'coalition_member',
-    relationship_status: 'active',
-    policy_areas: ['hiv_aids'],
-    website: 'https://unaids.org',
-    primary_contact: null,
-  },
-  {
-    id: '3',
-    name: 'Comic Relief',
-    org_type: 'funder_foundation',
-    relationship_type: 'funder',
-    relationship_status: 'active',
-    policy_areas: [],
-    website: 'https://comicrelief.com',
-    is_funder: true,
-    primary_contact: { first_name: 'Tom', last_name: 'Brown' },
-  },
-  {
-    id: '4',
-    name: 'Stonewall',
-    org_type: 'policy_advocacy',
-    relationship_type: 'coalition_member',
-    relationship_status: 'active',
-    policy_areas: ['lgbtq_rights'],
-    website: 'https://stonewall.org.uk',
-    primary_contact: { first_name: 'Sarah', last_name: 'Chen' },
-  },
-  {
-    id: '5',
-    name: 'Terrence Higgins Trust',
-    org_type: 'healthcare_provider',
-    relationship_type: 'strategic_partner',
-    relationship_status: 'active',
-    policy_areas: ['hiv_aids', 'sexual_health'],
-    website: 'https://tht.org.uk',
-    primary_contact: null,
-  },
-  {
-    id: '6',
-    name: 'UK Black Pride',
-    org_type: 'grassroots_community',
-    relationship_type: 'coalition_member',
-    relationship_status: 'active',
-    policy_areas: ['lgbtq_rights', 'racial_justice'],
-    website: 'https://ukblackpride.org.uk',
-    primary_contact: null,
-  },
-  {
-    id: '7',
-    name: 'GLA / Mayor of London',
-    org_type: 'government_public_sector',
-    relationship_type: 'policy_ally',
-    relationship_status: 'developing',
-    policy_areas: ['lgbtq_rights'],
-    website: 'https://london.gov.uk',
-    primary_contact: null,
-  },
-  {
-    id: '8',
-    name: 'UCL',
-    org_type: 'academic_research',
-    relationship_type: 'research_collaborator',
-    relationship_status: 'active',
-    policy_areas: ['mental_health'],
-    website: 'https://ucl.ac.uk',
-    primary_contact: null,
-  },
-]
+import { useOrganizations } from '@/hooks/use-organizations'
 
 export default function OrganizationsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
 
-  // Filter organizations
-  const filteredOrgs = mockOrganizations.filter((org) => {
+  const { data: organizations, isLoading, error } = useOrganizations(
+    typeFilter ? { type: typeFilter } : undefined
+  )
+
+  if (isLoading) return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-bold">Organizations</h1>
+          <p className="text-muted-foreground">Manage partner and stakeholder organizations</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    </div>
+  )
+
+  if (error) return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-bold">Organizations</h1>
+        </div>
+      </div>
+      <Card>
+        <CardContent className="p-8 text-center">
+          <p className="text-destructive">Failed to load organizations: {(error as Error).message}</p>
+        </CardContent>
+      </Card>
+    </div>
+  )
+
+  // Client-side search filter on hook results
+  const filteredOrgs = (organizations || []).filter((org: any) => {
     const matchesSearch =
       searchQuery === '' ||
       org.name.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesType = !typeFilter || org.org_type === typeFilter
-
-    return matchesSearch && matchesType
+    return matchesSearch
   })
 
   return (
@@ -213,7 +160,7 @@ export default function OrganizationsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredOrgs.map((org) => (
+                {filteredOrgs.map((org: any) => (
                   <tr
                     key={org.id}
                     className="border-b transition-colors hover:bg-muted/50"
@@ -259,7 +206,7 @@ export default function OrganizationsPage() {
                     </td>
                     <td className="p-4">
                       <div className="flex flex-wrap gap-1">
-                        {org.policy_areas?.slice(0, 2).map((area) => (
+                        {(org.policy_areas || []).slice(0, 2).map((area: string) => (
                           <Badge
                             key={area}
                             variant="outline"
@@ -268,9 +215,9 @@ export default function OrganizationsPage() {
                             {area.replace(/_/g, ' ')}
                           </Badge>
                         ))}
-                        {(org.policy_areas?.length || 0) > 2 && (
+                        {(org.policy_areas || []).length > 2 && (
                           <Badge variant="outline" className="text-xs">
-                            +{org.policy_areas!.length - 2}
+                            +{org.policy_areas.length - 2}
                           </Badge>
                         )}
                       </div>
@@ -312,6 +259,14 @@ export default function OrganizationsPage() {
               </tbody>
             </table>
           </div>
+
+          {filteredOrgs.length === 0 && (
+            <div className="p-8 text-center">
+              <p className="text-muted-foreground">
+                No organizations found.
+              </p>
+            </div>
+          )}
 
           {/* Pagination */}
           <div className="flex items-center justify-between border-t p-4">
