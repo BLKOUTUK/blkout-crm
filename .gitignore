@@ -55,3 +55,9 @@ graphify-out/
 !**/templates/*.csv
 # data/ = gmail exports, AI-brain correspondence bundles, match reviews (19 Sep 2026)
 data/
+
+# contact-data JSON exports (gmail, instagram, founding members, outreach lists) - personal data (30 Sep 2026)
+gmail-contacts-*.json
+ig-followers-*.json
+founding-members-*.json
+outreach-events-page.json
