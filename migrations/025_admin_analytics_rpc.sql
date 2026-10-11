@@ -11,9 +11,9 @@
 -- members, Hub, newsletter and engagement measures. Failed and absent rows are returned too:
 -- the page shows them as gaps with their reason, never as zeroes.
 --
--- Deliberately excluded: gestures.unmet and gestures.unmet_over_window. Rob, 28 Aug 2026:
--- never render an "unmet" count on a dashboard — broadcast touches are invisible to the
--- feed, so the number overstates who has gone unmet. It stays on the board numbers page.
+-- Deliberately excluded: gestures.unmet and gestures.unmet_over_window. The 48-hour window and
+-- its unmet count were retired as a measure on 29 Sep 2026 (Rob): never quoted in papers, pages
+-- or reports. Being met is described by the promise table instead.
 
 CREATE OR REPLACE FUNCTION public.admin_analytics_snapshot()
 RETURNS jsonb
