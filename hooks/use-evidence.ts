@@ -39,7 +39,7 @@ export interface HappinessMetrics {
 export interface MethodMetrics {
   automationsRunning: number
   crmPagesActive: number
-  newsletterSubscribers: number
+  newsletterSubscribers: number | null
   contentItemsPublished: number
   platformUptime: string
 }
@@ -272,19 +272,16 @@ export function useMethodMetrics() {
   return useQuery({
     queryKey: ['evidence', 'method'],
     queryFn: async () => {
-      const supabase = getSupabase()
-
-      // Newsletter subscribers
-      const { count: newsletterSubscribers } = await supabase
-        .from('newsletter_subscribers')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active')
+      // Newsletter subscribers: newsletter_subscribers was dropped 10 Sep 2026. The list size
+      // now lives in metrics.snapshots (newsletter.list, from SendFox), which the browser
+      // client can't read, so show it as not collected rather than a false 0.
+      const newsletterSubscribers = null
 
       // Platform stats (static for now, can be enhanced)
       return {
         automationsRunning: 4, // node-cron jobs in ivor-core
         crmPagesActive: 8, // dashboard, contacts, orgs, grants, policy, financial, events, evidence
-        newsletterSubscribers: newsletterSubscribers ?? 0,
+        newsletterSubscribers,
         contentItemsPublished: 54, // from campaign calendar
         platformUptime: '99.5%', // estimated from Coolify
       } as MethodMetrics

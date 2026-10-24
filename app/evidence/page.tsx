@@ -313,7 +313,7 @@ export default function EvidencePage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <MetricCard icon={Cog} label="Automations" value={m?.automationsRunning ?? 0} />
             <MetricCard icon={BarChart3} label="CRM Pages" value={m?.crmPagesActive ?? 0} color="text-blue-500" />
-            <MetricCard icon={Users} label="Subscribers" value={m?.newsletterSubscribers ?? 0} color="text-purple-500" />
+            <MetricCard icon={Users} label="Subscribers" value={m?.newsletterSubscribers ?? '—'} color="text-purple-500" />
             <MetricCard icon={Calendar} label="Content Items" value={m?.contentItemsPublished ?? 0} color="text-blkout-teal" />
             <MetricCard icon={TrendingUp} label="Uptime" value={m?.platformUptime ?? 'N/A'} color="text-green-500" />
           </div>
